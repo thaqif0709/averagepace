@@ -1,0 +1,48 @@
+{% extends "_base.html" %}
+{% block title %}Leaderboard — Averagepace{% endblock %}
+{% block content %}
+<div class="wrap wide">
+  <p class="eyebrow">Finish-line board</p>
+  <h1>{{ distance_labels[distance] }} leaderboard</h1>
+  <p class="lede">Every runner here submitted a raw GPX file. Green means it passed
+    every automated check. Yellow means it's plausible but hasn't been cross-checked.
+    Red never makes it here.</p>
+
+  <div class="filters">
+    {% for key, label in distance_labels.items() %}
+      <a href="/leaderboard?distance={{ key }}&tier={{ tier }}" class="{{ 'active' if distance == key }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <div class="filters">
+    <a href="/leaderboard?distance={{ distance }}&tier=all" class="{{ 'active' if tier == 'all' }}">All tiers</a>
+    <a href="/leaderboard?distance={{ distance }}&tier=green" class="{{ 'active' if tier == 'green' }}">Verified only</a>
+  </div>
+
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Runner</th>
+        <th>Time</th>
+        <th>Pace</th>
+        <th>Trust</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="rank">{{ loop.index }}</td>
+        <td>{{ row.runner_name }}</td>
+        <td class="time-cell">{{ row.duration_s | duration }}</td>
+        <td>{{ row.pace_sec_per_km | pace }}</td>
+        <td><span class="tier-dot {{ row.tier }}"></span>{{ row.tier }} · {{ row.trust_score }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No {{ distance_labels[distance] }} times yet. Be the first — <a href="/" style="color: var(--lane);">submit a run</a>.</div>
+  {% endif %}
+</div>
+{% endblock %}
