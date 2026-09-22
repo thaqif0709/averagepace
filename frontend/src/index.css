@@ -6,9 +6,8 @@
   Type: 'Space Mono' for all numerals/times (the signature element — every time
         on this site reads like a stopwatch split), 'Inter' for body/labels.
   Signature: the big split-time readout style, reused everywhere a time appears.
+  Fonts are loaded via a <link> in index.html, not @import here.
 */
-
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   --asphalt: #1B1B18;
@@ -149,6 +148,7 @@ button {
   transition: filter 0.15s;
 }
 button:hover, button:focus-visible { filter: brightness(1.08); }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* --- signature element: the split-time readout --- */
 .split-readout {
