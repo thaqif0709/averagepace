@@ -53,6 +53,12 @@ Then open http://localhost:5173
 
 CORS is controlled by `CORS_ORIGINS` in `backend/.env` (comma-separated origins).
 
+## Deploying
+
+See `DEPLOY.md` for a step-by-step free-tier deployment guide (Neon +
+Render + Vercel/Netlify). `render.yaml`, `frontend/vercel.json`, and
+`netlify.toml` are already set up for it.
+
 ## How the trust score works
 
 `backend/trust_score.py` checks each uploaded GPX against five things:
@@ -81,6 +87,6 @@ tune this once you have real submissions to calibrate against.
 ## Natural next steps
 
 1. Add Strava/Garmin OAuth so GPX doesn't need manual export (`stravalib` for Python)
-2. Deploy backend + Postgres on Railway/Fly.io/Render, frontend on Vercel/Netlify (all have free tiers)
+2. Deploy — see `DEPLOY.md` (Neon + Render + Vercel/Netlify, all free tier)
 3. Add user accounts so a leaderboard entry is tied to a persistent profile, not just a typed name
 4. Add a "flag this result" button for community moderation on borderline (yellow) entries
