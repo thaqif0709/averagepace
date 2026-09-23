@@ -79,6 +79,8 @@ def init_db():
                     END IF;
                 END $$;
             """)
+            # Editable posts - a no-op if already there.
+            cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ")
         conn.commit()
     finally:
         conn.close()
@@ -325,7 +327,7 @@ def get_following(user_id):
 
 POST_SELECT = """
     SELECT
-        p.id, p.body, p.created_at,
+        p.id, p.body, p.created_at, p.edited_at,
         u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar_url,
         r.id AS run_id, r.distance_bucket, r.distance_km, r.duration_s,
         r.pace_sec_per_km, r.trust_score, r.tier
@@ -342,11 +344,34 @@ def create_post(user_id, body=None, run_id=None):
             cur.execute("""
                 INSERT INTO posts (user_id, body, run_id)
                 VALUES (%s, %s, %s)
-                RETURNING id, user_id, body, run_id, created_at
+                RETURNING id, user_id, body, run_id, created_at, edited_at
             """, (user_id, body, run_id))
             post = cur.fetchone()
         conn.commit()
         return post
+    finally:
+        conn.close()
+
+
+def update_post(post_id, user_id, body):
+    """Edits a post's text. Only the owner's row matches (WHERE enforces this).
+    Returns (post, error): error is 'empty' if this would leave a text-only
+    post with no body (the table's own CHECK constraint catches it), or None
+    if post_id doesn't exist or isn't this user's."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                UPDATE posts SET body = %s, edited_at = NOW()
+                WHERE id = %s AND user_id = %s
+                RETURNING id, user_id, body, run_id, created_at, edited_at
+            """, (body, post_id, user_id))
+            updated = cur.fetchone()
+        conn.commit()
+        return updated, None
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        return None, "empty"
     finally:
         conn.close()
 

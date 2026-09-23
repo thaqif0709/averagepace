@@ -240,7 +240,8 @@ h2 {
   flex-shrink: 0;
 }
 .profile-header .avatar-fallback { width: 64px; height: 64px; font-size: 24px; }
-.profile-header h1 { margin-bottom: 4px; }
+.profile-header h1 { margin-bottom: 4px; display: flex; align-items: center; gap: 0.2em; }
+.private-lock { width: 0.5em; height: 0.5em; color: var(--ink-dim); flex-shrink: 0; }
 .profile-header .lede { margin: 0; }
 .profile-header .lede a { color: var(--ink-dim); text-decoration: underline; }
 .profile-header .lede a:hover { color: var(--accent); }
@@ -589,6 +590,47 @@ tbody tr:nth-child(1) .rank {
 }
 .post-activity-item { color: var(--ink-dim); }
 .post-activity .time-cell { color: var(--ink); font-size: 15px; }
+
+.post-edit-btn {
+  margin-left: auto;
+  margin-top: 0;
+  width: auto;
+  padding: 2px 8px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.post-edit-btn:hover, .post-edit-btn:focus-visible { color: var(--accent); filter: none; }
+
+.post-edit textarea { font-size: 15px; }
+.post-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.post-edit-actions button {
+  width: auto;
+  margin-top: 0;
+  padding: 9px 18px;
+  font-size: 13px;
+}
+.post-edit-actions button.ghost {
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid rgba(42,40,35,0.18);
+  box-shadow: none;
+}
+.post-edit-actions button.ghost:hover { border-color: var(--red); color: var(--red); filter: none; }
+.post-edit-error {
+  color: var(--red);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
 
 .user-list-row {
   display: flex;

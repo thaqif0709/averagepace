@@ -135,6 +135,10 @@ export default function ProfilePage() {
     }
   }
 
+  function handlePostUpdated(updated) {
+    setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+  }
+
   if (loading || authLoading) return null
   if (error) {
     return (
@@ -154,7 +158,25 @@ export default function ProfilePage() {
           <span className="avatar-fallback">{profile.name?.[0]?.toUpperCase() ?? '?'}</span>
         )}
         <div>
-          <h1>{profile.name}</h1>
+          <h1>
+            {profile.name}
+            {profile.is_private && (
+              <svg
+                className="private-lock"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-label="Private account"
+              >
+                <title>Private account</title>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            )}
+          </h1>
           <p className="lede">
             <Link to={`/profile/${profile.id}/followers`}>{profile.follower_count} followers</Link>
             {' · '}
@@ -237,7 +259,7 @@ export default function ProfilePage() {
       {!postsGated && posts.length > 0 && (
         <div className="feed">
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} onUpdated={handlePostUpdated} />
           ))}
         </div>
       )}

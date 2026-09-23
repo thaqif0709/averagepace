@@ -74,14 +74,18 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
 - **Social layer** — Twitter-style. Users follow each other
   (`follows` table); posts (`posts` table) are either free-text or linked to
   a run (`run_id`), so a scored submission and a text update share one feed.
+  Post owners can edit the text later (`PATCH /api/posts/{id}`, sets
+  `edited_at`, shown in the UI as "· edited" - the DB's own
+  `body IS NOT NULL OR run_id IS NOT NULL` CHECK constraint is what blocks
+  emptying a text-only post, caught in `update_post()`).
   - **Home feed** (`/`) — "Following" and "Everyone" tabs (URL-driven via
     `?scope=`), a composer for text posts when signed in. "Everyone" only
     ever shows posts from public accounts.
-  - **Public profile** (`/profile/:userId`) — anyone's avatar, name,
-    follower/following counts, follow button (hidden on your own profile or
-    when logged out), and their post history. Deliberately excludes email —
-    `get_user_public()` in `database.py` only ever selects
-    `id, name, avatar_url, is_private`.
+  - **Public profile** (`/profile/:userId`) — anyone's avatar, name, a
+    subtle padlock next to the name when `is_private`, follower/following
+    counts, follow button (hidden on your own profile or when logged out),
+    and their post history. Deliberately excludes email — `get_user_public()`
+    in `database.py` only ever selects `id, name, avatar_url, is_private`.
   - **Follower/following lists** (`/profile/:userId/followers|following`)
   - **Private accounts** — a user can flip `users.is_private` (toggle on
     their own profile page). Follow-approval model, same idea as Instagram's

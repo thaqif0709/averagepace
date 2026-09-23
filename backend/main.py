@@ -27,6 +27,7 @@ from database import (
     insert_run,
     set_user_privacy,
     unfollow_user,
+    update_post,
     upsert_user,
 )
 from trust_score import analyze_gpx_bytes, unverified_result
@@ -91,6 +92,19 @@ def create_text_post(body: dict = Body(...), current_user: dict = Depends(get_cu
     if len(text) > 500:
         raise HTTPException(status_code=400, detail="Post is too long (max 500 characters)")
     return create_post(user_id=current_user["id"], body=text)
+
+
+@app.patch("/api/posts/{post_id}")
+def edit_post(post_id: int, body: dict = Body(...), current_user: dict = Depends(get_current_user)):
+    text = (body.get("body") or "").strip()
+    if len(text) > 500:
+        raise HTTPException(status_code=400, detail="Post is too long (max 500 characters)")
+    updated, error = update_post(post_id, current_user["id"], text or None)
+    if error == "empty":
+        raise HTTPException(status_code=400, detail="Post can't be empty")
+    if not updated:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return updated
 
 
 @app.get("/api/feed")

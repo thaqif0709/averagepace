@@ -74,6 +74,19 @@ export async function createTextPost(token, body) {
   return res.json()
 }
 
+export async function updatePost(token, postId, body) {
+  const res = await fetch(`${API_URL}/api/posts/${postId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify({ body }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.detail || 'Failed to save post')
+  }
+  return res.json()
+}
+
 export async function fetchUserProfile(userId, token) {
   const res = await fetch(`${API_URL}/api/users/${userId}`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('User not found')

@@ -80,6 +80,9 @@ auto-accepts anything left pending.
   auth and includes private accounts you're an approved follower of;
   `everyone` only ever shows posts from public accounts
 - `POST /api/posts` — body `{"body": "<text>"}`, requires auth; text-only post (max 500 chars)
+- `PATCH /api/posts/{post_id}` — body `{"body": "<text>"}`, requires auth and
+  ownership; edits a post's text (including adding/clearing a run post's
+  caption). Empty body is only allowed when the post has a linked run.
 - `GET /api/users/{user_id}` — public profile (name/avatar, `is_private`,
   follower/following counts, `follow_status`: self/none/pending/accepted);
   never exposes email

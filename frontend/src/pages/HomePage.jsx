@@ -55,6 +55,10 @@ export default function HomePage() {
     }
   }
 
+  function handlePostUpdated(updated) {
+    setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+  }
+
   return (
     <div className="wrap wide">
       <p className="eyebrow">The feed</p>
@@ -101,7 +105,7 @@ export default function HomePage() {
       {posts.length > 0 && (
         <div className="feed">
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} onUpdated={handlePostUpdated} />
           ))}
         </div>
       )}

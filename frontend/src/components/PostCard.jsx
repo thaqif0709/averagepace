@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth.jsx'
+import { updatePost } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
@@ -14,7 +17,35 @@ function timeAgo(iso) {
   return `${days}d`
 }
 
-export default function PostCard({ post }) {
+export default function PostCard({ post, onUpdated }) {
+  const { user, token } = useAuth()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(post.body || '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  const isOwn = user && user.id === post.user_id
+
+  function startEdit() {
+    setDraft(post.body || '')
+    setError(null)
+    setEditing(true)
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    try {
+      const updated = await updatePost(token, post.id, draft.trim())
+      setEditing(false)
+      onUpdated?.(updated)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <article className="post-card">
       <Link to={`/profile/${post.user_id}`} className="post-avatar">
@@ -29,9 +60,39 @@ export default function PostCard({ post }) {
           <Link to={`/profile/${post.user_id}`} className="post-author">
             {post.user_name}
           </Link>
-          <span className="post-time">· {timeAgo(post.created_at)}</span>
+          <span className="post-time">
+            · {timeAgo(post.created_at)}
+            {post.edited_at && ' · edited'}
+          </span>
+          {isOwn && !editing && (
+            <button type="button" className="post-edit-btn" onClick={startEdit}>
+              Edit
+            </button>
+          )}
         </div>
-        {post.body && <p className="post-text">{post.body}</p>}
+
+        {editing ? (
+          <div className="post-edit">
+            <textarea
+              value={draft}
+              maxLength={500}
+              onChange={(e) => setDraft(e.target.value)}
+              autoFocus
+            />
+            {error && <p className="post-edit-error">{error}</p>}
+            <div className="post-edit-actions">
+              <button type="button" onClick={handleSave} disabled={saving || (!draft.trim() && !post.run_id)}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" className="ghost" onClick={() => setEditing(false)} disabled={saving}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          post.body && <p className="post-text">{post.body}</p>
+        )}
+
         {post.run_id && (
           <div className="post-activity">
             <span className={`tier-dot ${post.tier}`}></span>
