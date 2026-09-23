@@ -495,6 +495,25 @@ def get_leaderboard(distance_bucket, tier_filter=None):
         conn.close()
 
 
+def get_best_efforts(user_id):
+    """This user's fastest run per distance bucket - their all-time PRs."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT * FROM (
+                    SELECT runs.*,
+                        ROW_NUMBER() OVER (PARTITION BY distance_bucket ORDER BY duration_s ASC) AS rn
+                    FROM runs
+                    WHERE user_id = %s AND duration_s IS NOT NULL
+                ) ranked
+                WHERE rn = 1
+            """, (user_id,))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
 def vouch_for_run(user_id, run_id):
     """Adds a vouch (or leaves alone, if one already exists).
     Returns (ok, error): error is 'not_found' if the run doesn't exist,

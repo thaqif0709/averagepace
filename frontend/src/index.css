@@ -759,6 +759,42 @@ tbody tr:nth-child(1) .rank {
 .privacy-toggle input { width: auto; margin: 0; cursor: pointer; accent-color: var(--accent); }
 .profile-settings .hint { margin: 8px 0 0; }
 
+.best-efforts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.best-effort-card {
+  background: var(--surface);
+  border: 1px solid rgba(42,40,35,0.07);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.best-effort-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+}
+.best-effort-time {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+.best-effort-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
 .user-list-row.follow-request-row { justify-content: space-between; flex-wrap: wrap; row-gap: 10px; }
 .follow-request-user {
   display: flex;

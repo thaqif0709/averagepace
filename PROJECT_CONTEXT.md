@@ -148,6 +148,14 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   profile (`PostCard.jsx`) for other viewers, a plain "N vouched" readout for
   the runner's own view and logged-out visitors, and a read-only count on the
   leaderboard.
+- **Best efforts** (`GET /api/users/{id}/best-efforts`) — each runner's
+  fastest submission per distance bucket, one row via
+  `ROW_NUMBER() OVER (PARTITION BY distance_bucket ORDER BY duration_s ASC)`
+  in `get_best_efforts()`; buckets with no submissions are simply absent, not
+  zero-filled. Shown as a small card grid near the top of the profile page
+  (`ProfilePage.jsx`, ordered 5K→10K→Half→Marathon), gated by the same
+  `can_view_private_content` privacy check as posts. Requested explicitly as
+  a Strava feature that's normally paywalled there.
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
   in the URL (shareable links); excludes runs by currently-private users

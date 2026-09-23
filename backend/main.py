@@ -15,6 +15,7 @@ from database import (
     create_post,
     decline_follow_request,
     follow_user,
+    get_best_efforts,
     get_feed,
     get_follow_counts,
     get_follow_status,
@@ -156,6 +157,17 @@ def user_posts(user_id: int, current_user: dict = Depends(get_current_user_optio
     if not can_view_private_content(user_id, viewer_id, user["is_private"]):
         return {"posts": [], "gated": True}
     return {"posts": get_posts_for_user(user_id, viewer_id=viewer_id), "gated": False}
+
+
+@app.get("/api/users/{user_id}/best-efforts")
+def user_best_efforts(user_id: int, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_public(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    viewer_id = current_user["id"] if current_user else None
+    if not can_view_private_content(user_id, viewer_id, user["is_private"]):
+        return {"best_efforts": [], "gated": True}
+    return {"best_efforts": get_best_efforts(user_id), "gated": False}
 
 
 @app.get("/api/users/{user_id}/followers")

@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import PostCard from '../components/PostCard.jsx'
+import { formatDuration, formatPace } from '../format.js'
 import {
   acceptFollowRequest,
   declineFollowRequest,
+  fetchBestEfforts,
   fetchFollowRequests,
   fetchUserPosts,
   fetchUserProfile,
@@ -12,6 +14,9 @@ import {
   unfollowUser,
   updatePrivacy,
 } from '../api.js'
+
+const DISTANCE_ORDER = ['5k', '10k', 'half', 'marathon']
+const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
 
 export function ProfileRedirect() {
   const { user, loading } = useAuth()
@@ -26,6 +31,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
   const [postsGated, setPostsGated] = useState(false)
+  const [bestEfforts, setBestEfforts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [followBusy, setFollowBusy] = useState(false)
@@ -38,12 +44,16 @@ export default function ProfilePage() {
     let cancelled = false
     setLoading(true)
     setError(null)
-    Promise.all([fetchUserProfile(userId, token), fetchUserPosts(userId, token)])
-      .then(([profileData, postsData]) => {
+    Promise.all([fetchUserProfile(userId, token), fetchUserPosts(userId, token), fetchBestEfforts(userId, token)])
+      .then(([profileData, postsData, bestEffortsData]) => {
         if (cancelled) return
         setProfile(profileData)
         setPosts(postsData.posts)
         setPostsGated(postsData.gated)
+        const sorted = [...bestEffortsData.best_efforts].sort(
+          (a, b) => DISTANCE_ORDER.indexOf(a.distance_bucket) - DISTANCE_ORDER.indexOf(b.distance_bucket)
+        )
+        setBestEfforts(sorted)
       })
       .catch((err) => {
         if (!cancelled) setError(err.message)
@@ -240,6 +250,30 @@ export default function ProfilePage() {
                   >
                     Decline
                   </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {bestEfforts.length > 0 && (
+        <>
+          <h2>Best efforts</h2>
+          <div className="best-efforts-grid">
+            {bestEfforts.map((be) => (
+              <div key={be.distance_bucket} className="best-effort-card">
+                <div className="best-effort-label">{DISTANCE_LABELS[be.distance_bucket] ?? be.distance_bucket}</div>
+                <div className="best-effort-time">{formatDuration(be.duration_s)}</div>
+                <div className="best-effort-meta">
+                  <span className={`tier-dot ${be.tier}`}></span>
+                  {formatPace(be.pace_sec_per_km)}
+                  {be.time_type && <span className="time-type-tag">{be.time_type}</span>}
+                  {be.result_url && (
+                    <a href={be.result_url} target="_blank" rel="noopener noreferrer" className="post-result-link">
+                      ↗
+                    </a>
+                  )}
                 </div>
               </div>
             ))}

@@ -101,6 +101,12 @@ export async function fetchUserPosts(userId, token) {
   return res.json()
 }
 
+export async function fetchBestEfforts(userId, token) {
+  const res = await fetch(`${API_URL}/api/users/${userId}/best-efforts`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Failed to load best efforts')
+  return res.json()
+}
+
 export async function fetchFollowers(userId, token) {
   const res = await fetch(`${API_URL}/api/users/${userId}/followers`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load followers')
