@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import { fetchUserRunsByDistance, updateRunMetadata, deleteRun } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
+import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
 
@@ -217,7 +218,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
               className="post-result-link"
               title="View official result"
             >
-              ↗
+              <ExternalLinkIcon />
             </a>
           )}
           {run.vouch_count > 0 && (
@@ -274,7 +275,7 @@ export default function BestEffortDetailPage() {
   return (
     <div className="wrap wide">
       <p className="eyebrow">
-        <Link to={`/profile/${userId}`}>← Back to profile</Link>
+        <Link to={`/profile/${userId}`}>&lt;- Back to profile</Link>
       </p>
       <h1>{distanceLabel} history</h1>
       <p className="lede">Every {distanceLabel} you've logged, fastest first.</p>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { fetchLeaderboard } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
+import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 
 const DISTANCES = [
   ['5k', '5K'],
@@ -111,7 +112,7 @@ export default function LeaderboardPage() {
                         className="post-result-link"
                         title="View official result"
                       >
-                        ↗
+                        <ExternalLinkIcon />
                       </a>
                     )}
                     {row.vouch_count > 0 && (

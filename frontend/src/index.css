@@ -417,6 +417,9 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shado
 
 .result-link { margin: 16px 0 0; }
 .result-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--accent);
   font-weight: 600;
   font-size: 14px;
@@ -703,6 +706,9 @@ tbody tr:nth-child(1) .rank {
 }
 .post-activity-item { color: var(--ink-dim); }
 .post-result-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--accent);
   font-weight: 600;
   font-size: 13px;

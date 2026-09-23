@@ -3,6 +3,7 @@ import { useAuth } from '../auth.jsx'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { submitRun, fetchEventSuggestions } from '../api.js'
 import { autoFormatDurationInput, formatDuration, formatPace, parseDuration } from '../format.js'
+import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 
 export default function UploadPage() {
   const { user, token, loading } = useAuth()
@@ -169,7 +170,7 @@ export default function UploadPage() {
                   inputMode="numeric"
                   id="manual_time"
                   required
-                  placeholder="e.g. 2548 → 25:48"
+                  placeholder="e.g. 2548 -> 25:48"
                   value={manualTime}
                   onChange={(e) => setManualTime(autoFormatDurationInput(e.target.value))}
                 />
@@ -251,7 +252,8 @@ export default function UploadPage() {
           {result.result_url && (
             <p className="result-link">
               <a href={result.result_url} target="_blank" rel="noopener noreferrer">
-                View official result ↗
+                View official result
+                <ExternalLinkIcon />
               </a>
             </p>
           )}

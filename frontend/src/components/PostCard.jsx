@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import { updatePost, deleteRun, deletePost, vouchForRun, unvouchForRun, likePost, unlikePost } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
+import ExternalLinkIcon from './ExternalLinkIcon.jsx'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
 
@@ -295,7 +296,8 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
             <span className="post-activity-trailing">
               {post.result_url && (
                 <a href={post.result_url} target="_blank" rel="noopener noreferrer" className="post-result-link">
-                  Official result ↗
+                  Official result
+                  <ExternalLinkIcon />
                 </a>
               )}
               {user && !isOwn ? (
