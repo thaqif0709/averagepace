@@ -97,6 +97,16 @@ def init_db():
                     END IF;
                 END $$;
             """)
+            # Social proof, separate from trust scoring - any signed-in user
+            # (other than the runner) can vouch for a run once.
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS vouches (
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (user_id, run_id)
+                )
+            """)
         conn.commit()
     finally:
         conn.close()
@@ -346,10 +356,17 @@ POST_SELECT = """
         p.id, p.body, p.created_at, p.edited_at,
         u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar_url,
         r.id AS run_id, r.distance_bucket, r.distance_km, r.duration_s,
-        r.pace_sec_per_km, r.trust_score, r.tier, r.result_url, r.time_type
+        r.pace_sec_per_km, r.trust_score, r.tier, r.result_url, r.time_type,
+        COALESCE(v.vouch_count, 0) AS vouch_count,
+        EXISTS (
+            SELECT 1 FROM vouches WHERE run_id = r.id AND user_id = %s
+        ) AS vouched_by_me
     FROM posts p
     JOIN users u ON u.id = p.user_id
     LEFT JOIN runs r ON r.id = p.run_id
+    LEFT JOIN (
+        SELECT run_id, COUNT(*) AS vouch_count FROM vouches GROUP BY run_id
+    ) v ON v.run_id = r.id
 """
 
 
@@ -392,7 +409,7 @@ def update_post(post_id, user_id, body):
         conn.close()
 
 
-def get_feed(scope, user_id=None, limit=50):
+def get_feed(scope, user_id=None, viewer_id=None, limit=50):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -405,26 +422,26 @@ def get_feed(scope, user_id=None, limit=50):
                        )
                     ORDER BY p.created_at DESC
                     LIMIT %s
-                """, (user_id, user_id, limit))
+                """, (viewer_id, user_id, user_id, limit))
             else:
                 # Everyone means everyone public - a private account's posts only
                 # ever show up in the feeds of people it has accepted as followers.
                 cur.execute(
                     POST_SELECT + " WHERE u.is_private = FALSE ORDER BY p.created_at DESC LIMIT %s",
-                    (limit,),
+                    (viewer_id, limit),
                 )
             return cur.fetchall()
     finally:
         conn.close()
 
 
-def get_posts_for_user(user_id, limit=100):
+def get_posts_for_user(user_id, viewer_id=None, limit=100):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 POST_SELECT + " WHERE p.user_id = %s ORDER BY p.created_at DESC LIMIT %s",
-                (user_id, limit),
+                (viewer_id, user_id, limit),
             )
             return cur.fetchall()
     finally:
@@ -458,8 +475,12 @@ def get_leaderboard(distance_bucket, tier_filter=None):
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             query = """
-                SELECT runs.* FROM runs
+                SELECT runs.*, COALESCE(v.vouch_count, 0) AS vouch_count
+                FROM runs
                 LEFT JOIN users ON users.id = runs.user_id
+                LEFT JOIN (
+                    SELECT run_id, COUNT(*) AS vouch_count FROM vouches GROUP BY run_id
+                ) v ON v.run_id = runs.id
                 WHERE runs.distance_bucket = %s
                   AND (users.is_private IS NULL OR users.is_private = FALSE)
             """
@@ -470,5 +491,48 @@ def get_leaderboard(distance_bucket, tier_filter=None):
             query += " ORDER BY runs.duration_s ASC, runs.id ASC LIMIT 100"
             cur.execute(query, params)
             return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def vouch_for_run(user_id, run_id):
+    """Adds a vouch (or leaves alone, if one already exists).
+    Returns (ok, error): error is 'not_found' if the run doesn't exist,
+    'self' if it's the caller's own run, else None."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_id FROM runs WHERE id = %s", (run_id,))
+            row = cur.fetchone()
+            if row is None:
+                return False, "not_found"
+            if row[0] == user_id:
+                return False, "self"
+            cur.execute("""
+                INSERT INTO vouches (user_id, run_id) VALUES (%s, %s)
+                ON CONFLICT (user_id, run_id) DO NOTHING
+            """, (user_id, run_id))
+        conn.commit()
+        return True, None
+    finally:
+        conn.close()
+
+
+def unvouch_for_run(user_id, run_id):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM vouches WHERE user_id = %s AND run_id = %s", (user_id, run_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_vouch_count(run_id):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM vouches WHERE run_id = %s", (run_id,))
+            return cur.fetchone()[0]
     finally:
         conn.close()

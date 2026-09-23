@@ -113,6 +113,9 @@ export default function LeaderboardPage() {
                       ↗
                     </a>
                   )}
+                  {row.vouch_count > 0 && (
+                    <span className="vouch-count-readonly"> · {row.vouch_count} vouched</span>
+                  )}
                 </td>
               </tr>
             ))}

@@ -650,10 +650,34 @@ tbody tr:nth-child(1) .rank {
   font-weight: 600;
   font-size: 13px;
   text-decoration: none;
-  margin-left: auto;
 }
 .post-result-link:hover { text-decoration: underline; }
 .post-activity .time-cell { color: var(--ink); font-size: 15px; }
+
+.post-activity-trailing {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+.vouch-button {
+  width: auto;
+  margin-top: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-dim);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid rgba(42,40,35,0.16);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--fast) var(--ease), color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.vouch-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); filter: none; }
+.vouch-button.vouched { background: var(--accent); color: #FFFFFF; border-color: var(--accent); }
+.vouch-button.vouched:hover:not(:disabled) { color: #FFFFFF; filter: brightness(0.94); }
+.vouch-count-readonly { color: var(--ink-dim); font-size: 13px; }
 
 .post-edit-btn {
   margin-left: auto;

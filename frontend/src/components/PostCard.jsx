@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
-import { updatePost } from '../api.js'
+import { updatePost, vouchForRun, unvouchForRun } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
@@ -23,6 +23,9 @@ export default function PostCard({ post, onUpdated }) {
   const [draft, setDraft] = useState(post.body || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [vouched, setVouched] = useState(post.vouched_by_me || false)
+  const [vouchCount, setVouchCount] = useState(post.vouch_count || 0)
+  const [vouching, setVouching] = useState(false)
 
   const isOwn = user && user.id === post.user_id
 
@@ -43,6 +46,22 @@ export default function PostCard({ post, onUpdated }) {
       setError(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function toggleVouch() {
+    if (vouching) return
+    setVouching(true)
+    try {
+      const data = vouched
+        ? await unvouchForRun(post.run_id, token)
+        : await vouchForRun(post.run_id, token)
+      setVouched(data.vouched)
+      setVouchCount(data.vouch_count)
+    } catch {
+      // low-stakes toggle - leave state as-is, the button just didn't change
+    } finally {
+      setVouching(false)
     }
   }
 
@@ -102,11 +121,25 @@ export default function PostCard({ post, onUpdated }) {
               {post.time_type && <span className="time-type-tag">{post.time_type}</span>}
             </span>
             <span className="post-activity-item">{formatPace(post.pace_sec_per_km)}</span>
-            {post.result_url && (
-              <a href={post.result_url} target="_blank" rel="noopener noreferrer" className="post-result-link">
-                Official result ↗
-              </a>
-            )}
+            <span className="post-activity-trailing">
+              {post.result_url && (
+                <a href={post.result_url} target="_blank" rel="noopener noreferrer" className="post-result-link">
+                  Official result ↗
+                </a>
+              )}
+              {user && !isOwn ? (
+                <button
+                  type="button"
+                  className={`vouch-button ${vouched ? 'vouched' : ''}`}
+                  onClick={toggleVouch}
+                  disabled={vouching}
+                >
+                  {vouched ? 'Vouched' : 'Vouch'}{vouchCount > 0 && ` · ${vouchCount}`}
+                </button>
+              ) : (
+                vouchCount > 0 && <span className="vouch-count-readonly">{vouchCount} vouched</span>
+              )}
+            </span>
           </div>
         )}
       </div>

@@ -139,6 +139,15 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
 - **Trust tiers** — green (85+, high trust, GPX-verified) / yellow (50-84,
   either GPX-plausible-but-flagged or link-backed) / red (<50, no evidence at
   all) — shown immediately with specific flags raised
+- **Vouches** (`vouches` table, `user_id`+`run_id` primary key) — social
+  proof, deliberately kept separate from trust scoring rather than feeding
+  into the tier/score, so a run's tier stays an objective signal and vouching
+  can't be brigaded into inflating it. Any signed-in user except the runner
+  can vouch for a run once (toggle on `POST`/`DELETE /api/runs/{id}/vouch`).
+  Shown as an interactive "Vouch"/"Vouched · N" pill on posts in the feed and
+  profile (`PostCard.jsx`) for other viewers, a plain "N vouched" readout for
+  the runner's own view and logged-out visitors, and a read-only count on the
+  leaderboard.
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
   in the URL (shareable links); excludes runs by currently-private users

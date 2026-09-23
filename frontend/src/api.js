@@ -167,3 +167,24 @@ export async function unfollowUser(userId, token) {
   if (!res.ok) throw new Error('Failed to unfollow')
   return res.json()
 }
+
+export async function vouchForRun(runId, token) {
+  const res = await fetch(`${API_URL}/api/runs/${runId}/vouch`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to vouch')
+  }
+  return res.json()
+}
+
+export async function unvouchForRun(runId, token) {
+  const res = await fetch(`${API_URL}/api/runs/${runId}/vouch`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) throw new Error('Failed to unvouch')
+  return res.json()
+}

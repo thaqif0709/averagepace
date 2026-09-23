@@ -24,12 +24,15 @@ from database import (
     get_pending_follow_requests,
     get_posts_for_user,
     get_user_public,
+    get_vouch_count,
     init_db,
     insert_run,
     set_user_privacy,
     unfollow_user,
+    unvouch_for_run,
     update_post,
     upsert_user,
+    vouch_for_run,
 )
 from trust_score import analyze_gpx_bytes, linked_result, unverified_result
 
@@ -112,12 +115,13 @@ def edit_post(post_id: int, body: dict = Body(...), current_user: dict = Depends
 def feed(scope: str = "everyone", current_user: dict = Depends(get_current_user_optional)):
     if scope not in ("everyone", "following"):
         raise HTTPException(status_code=400, detail="Invalid scope")
+    viewer_id = current_user["id"] if current_user else None
     if scope == "following":
         if not current_user:
             raise HTTPException(status_code=401, detail="Sign in to see your following feed")
-        rows = get_feed("following", user_id=current_user["id"])
+        rows = get_feed("following", user_id=current_user["id"], viewer_id=viewer_id)
     else:
-        rows = get_feed("everyone")
+        rows = get_feed("everyone", viewer_id=viewer_id)
     return {"posts": rows}
 
 
@@ -151,7 +155,7 @@ def user_posts(user_id: int, current_user: dict = Depends(get_current_user_optio
     viewer_id = current_user["id"] if current_user else None
     if not can_view_private_content(user_id, viewer_id, user["is_private"]):
         return {"posts": [], "gated": True}
-    return {"posts": get_posts_for_user(user_id), "gated": False}
+    return {"posts": get_posts_for_user(user_id, viewer_id=viewer_id), "gated": False}
 
 
 @app.get("/api/users/{user_id}/followers")
@@ -209,6 +213,22 @@ def decline_request(requester_id: int, current_user: dict = Depends(get_current_
     if not decline_follow_request(current_user["id"], requester_id):
         raise HTTPException(status_code=404, detail="No pending request from this user")
     return {"status": "declined"}
+
+
+@app.post("/api/runs/{run_id}/vouch")
+def vouch(run_id: int, current_user: dict = Depends(get_current_user)):
+    ok, error = vouch_for_run(current_user["id"], run_id)
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Run not found")
+    if error == "self":
+        raise HTTPException(status_code=400, detail="Can't vouch for your own run")
+    return {"vouched": True, "vouch_count": get_vouch_count(run_id)}
+
+
+@app.delete("/api/runs/{run_id}/vouch")
+def unvouch(run_id: int, current_user: dict = Depends(get_current_user)):
+    unvouch_for_run(current_user["id"], run_id)
+    return {"vouched": False, "vouch_count": get_vouch_count(run_id)}
 
 
 @app.post("/api/upload")
