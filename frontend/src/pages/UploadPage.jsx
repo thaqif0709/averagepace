@@ -51,7 +51,7 @@ export default function UploadPage() {
           type="text"
           id="runner_name"
           required
-          placeholder="e.g. Thaqif R."
+          placeholder="e.g. John Doe"
           value={runnerName}
           onChange={(e) => setRunnerName(e.target.value)}
         />
