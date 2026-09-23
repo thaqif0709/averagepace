@@ -150,6 +150,20 @@ def edit_post(post_id: int, body: dict = Body(...), current_user: dict = Depends
     return updated
 
 
+@app.patch("/api/runs/{run_id}")
+def edit_run(run_id: int, body: dict = Body(...), current_user: dict = Depends(get_current_user)):
+    """Metadata-only edit for a run directly (no attached post/caption in
+    play) - the Best Efforts drill-down uses this rather than PATCH
+    /api/posts/{id}, since it never shows a caption to begin with."""
+    event_name, time_type, result_url = clean_run_metadata(
+        body.get("event_name"), body.get("time_type"), body.get("result_url")
+    )
+    updated = update_run_metadata(run_id, current_user["id"], event_name, time_type, result_url)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return updated
+
+
 @app.delete("/api/runs/{run_id}")
 def remove_run(run_id: int, current_user: dict = Depends(get_current_user)):
     if not delete_run(run_id, current_user["id"]):

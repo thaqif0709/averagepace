@@ -85,7 +85,12 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   means deleting the run (`DELETE /api/runs/{id}`, owner-only, cascades to
   its post and any vouches via FK) and resubmitting - the PostCard edit UI
   surfaces this as a "Delete entry" option with an inline confirm step,
-  which warns about vouch loss when the run has any.
+  which warns about vouch loss when the run has any. The same edit/delete
+  is also available per-row on the Best Efforts drill-down
+  (`BestEffortDetailPage.jsx`'s `RunRow`), via a dedicated
+  `PATCH /api/runs/{id}` (metadata-only, no caption in play there - reuses
+  `update_run_metadata()`/`clean_run_metadata()` directly rather than going
+  through a post).
   - **Home feed** (`/`) — "Following" and "Everyone" tabs (URL-driven via
     `?scope=`), a composer for text posts when signed in. "Everyone" only
     ever shows posts from public accounts.

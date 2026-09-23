@@ -792,6 +792,8 @@ tbody tr:nth-child(1) .rank {
 .post-edit-run-fields .segmented { margin-bottom: 4px; }
 .post-edit-run-fields .hint { font-size: 12px; }
 
+.run-row-edit-btn { margin-left: 8px; }
+
 .post-delete-confirm {
   margin-top: 14px;
   padding: 14px;
