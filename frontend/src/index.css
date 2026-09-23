@@ -224,7 +224,16 @@ h2 {
   margin: 0 0 40px;
 }
 
-.narrow-col { max-width: 640px; }
+.form-row {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+.form-row .form-field {
+  flex: 1;
+  min-width: 0;
+}
+form .form-row label { margin-top: 0; }
 
 /* --- profile header --- */
 .profile-header {
@@ -812,6 +821,8 @@ tbody tr:nth-child(1) .rank {
 
   form { padding: 22px; }
   .result-card { padding: 22px; }
+  .form-row { flex-direction: column; gap: 0; }
+  .form-row .form-field:not(:first-child) label { margin-top: 20px; }
 
   .profile-header { gap: 14px 20px; margin-bottom: 28px; }
   .profile-header > div:not(.follow-button) { flex: 1; min-width: 180px; }

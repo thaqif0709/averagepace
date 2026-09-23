@@ -52,7 +52,6 @@ export default function UploadPage() {
 
       {loading && null}
 
-      <div className="narrow-col">
       {!loading && !user && (
         <div className="result-card">
           <p style={{ marginTop: 0 }}>Sign in with Google to submit a run — this ties it to your profile.</p>
@@ -85,30 +84,37 @@ export default function UploadPage() {
               anyone — including other runners — can click through and check.
             </p>
 
-            <label htmlFor="claimed_distance_km">Distance (km) — from the result, or your own claim</label>
-            <input
-              type="number"
-              id="claimed_distance_km"
-              step="0.01"
-              required
-              placeholder="e.g. 5, 10, 21.1, 42.2"
-              value={claimedDistanceKm}
-              onChange={(e) => setClaimedDistanceKm(e.target.value)}
-            />
-
-            <label htmlFor="manual_time">Time — from the result, or your own claim</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              id="manual_time"
-              required
-              placeholder="e.g. 2548 → 25:48"
-              value={manualTime}
-              onChange={(e) => setManualTime(autoFormatDurationInput(e.target.value))}
-            />
+            <div className="form-row">
+              <div className="form-field">
+                <label htmlFor="claimed_distance_km">Distance (km)</label>
+                <input
+                  type="number"
+                  id="claimed_distance_km"
+                  step="0.01"
+                  required
+                  placeholder="e.g. 5, 10, 21.1, 42.2"
+                  value={claimedDistanceKm}
+                  onChange={(e) => setClaimedDistanceKm(e.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="manual_time">Time</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  id="manual_time"
+                  required
+                  placeholder="e.g. 2548 → 25:48"
+                  value={manualTime}
+                  onChange={(e) => setManualTime(autoFormatDurationInput(e.target.value))}
+                />
+              </div>
+            </div>
             <p className="hint">
-              Just type the digits, right to left — seconds, then minutes, then
-              hours. Pace is calculated automatically from distance and time.
+              Both from the result above, or your own claim if you're not
+              linking one. Just type the time's digits, right to left —
+              seconds, then minutes, then hours. Pace is calculated
+              automatically from distance and time.
             </p>
 
             <label htmlFor="caption">Add a note (optional)</label>
@@ -169,7 +175,6 @@ export default function UploadPage() {
           )}
         </div>
       )}
-      </div>
     </div>
   )
 }
