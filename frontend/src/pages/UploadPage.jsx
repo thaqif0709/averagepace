@@ -68,10 +68,10 @@ export default function UploadPage() {
       <p className="eyebrow">No subscription. No segments. Just your time.</p>
       <h1>Log your official run.<br />See where it ranks.</h1>
       <p className="lede">
-        Start with the link to your official race result, then type in what
-        it shows. The link travels with your entry as a citation anyone can
-        click through and check — that's what earns the trust bump over a
-        bare claim.
+        Got a link to your official race result? Paste it in, then type in
+        what it shows — the link travels with your entry as a citation
+        anyone can click through, which gives your time an extra trust
+        boost. No link yet? You can still log your time and add one later.
       </p>
 
       {loading && null}
@@ -176,10 +176,9 @@ export default function UploadPage() {
               </div>
             </div>
             <p className="hint">
-              Both from the result above, or your own claim if you're not
-              linking one. Just type the time's digits, right to left —
-              seconds, then minutes, then hours. Pace is calculated
-              automatically from distance and time.
+              Both come from the result above, or type your own if you're
+              not linking one. For time, just type the numbers in order —
+              e.g. 2548 becomes 25:48 — and pace is worked out for you.
             </p>
 
             <label>Which time is this?</label>
@@ -227,7 +226,7 @@ export default function UploadPage() {
           <span className={`tier-pill tier-${result.tier}`}>
             {result.tier === 'green' && 'Verified — high trust'}
             {result.tier === 'yellow' && (result.file_hash ? 'Device-synced — needs review' : 'Official result linked')}
-            {result.tier === 'red' && (result.file_hash ? 'Flagged — manual review required' : 'Unverified — no official link provided')}
+            {result.tier === 'red' && (result.file_hash ? 'Flagged — manual review required' : 'Logged — no link added yet')}
           </span>
           {result.event_name && <p className="result-event-name">{result.event_name}</p>}
           <div className="split-readout">
@@ -258,7 +257,7 @@ export default function UploadPage() {
           )}
           {result.flags?.length > 0 && (
             <div className="flags">
-              <strong>Flags raised:</strong>
+              <strong>Why this score:</strong>
               <ul>
                 {result.flags.map((f, i) => (
                   <li key={i}>{f}</li>

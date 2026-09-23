@@ -43,7 +43,7 @@ def unverified_result(claimed_distance_km, claimed_duration_s):
     return {
         "score": 0,
         "tier": "red",
-        "flags": ["No GPX file or official result link provided — submission could not be verified."],
+        "flags": ["No official link added yet — you can edit this entry anytime to add one and boost its trust score."],
         "file_hash": None,
         "result_url": None,
         "duration_s": claimed_duration_s,
@@ -64,7 +64,7 @@ def linked_result(claimed_distance_km, claimed_duration_s, result_url):
     return {
         "score": 60,
         "tier": "yellow",
-        "flags": ["Backed by an official result link — not automatically verified, but anyone can check it."],
+        "flags": ["Backed by an official result link that anyone can click through and check."],
         "file_hash": None,
         "result_url": result_url,
         "duration_s": claimed_duration_s,
