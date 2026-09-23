@@ -1,4 +1,5 @@
-import { Routes, Route, Link, NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Routes, Route, Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from './auth.jsx'
 import GoogleSignInButton from './components/GoogleSignInButton.jsx'
 import HomePage from './pages/HomePage.jsx'
@@ -9,6 +10,32 @@ import FollowListPage from './pages/FollowListPage.jsx'
 
 export default function App() {
   const { user, loading, logout } = useAuth()
+  const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function onKeyDown(e) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [menuOpen])
+
+  function closeMenu() {
+    setMenuOpen(false)
+  }
 
   return (
     <>
@@ -26,7 +53,37 @@ export default function App() {
           )}
           {!loading && !user && <GoogleSignInButton />}
         </nav>
+        <button
+          type="button"
+          className={`nav-toggle ${menuOpen ? 'open' : ''}`}
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+        >
+          <span className="nav-toggle-bars">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
+
+        <div className={`mobile-menu ${menuOpen ? 'open' : ''}`}>
+          <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
+          <NavLink to="/submit" onClick={closeMenu}>Submit a run</NavLink>
+          <NavLink to="/leaderboard" onClick={closeMenu}>Leaderboard</NavLink>
+          {!loading && user && <NavLink to="/profile" onClick={closeMenu}>Profile</NavLink>}
+          <div className="mobile-menu-divider" />
+          {!loading && user && (
+            <button type="button" className="link-button" onClick={() => { closeMenu(); logout() }}>
+              Sign out
+            </button>
+          )}
+          {!loading && !user && <GoogleSignInButton />}
+        </div>
       </div>
+
+      <div className={`mobile-menu-backdrop ${menuOpen ? 'open' : ''}`} onClick={closeMenu} />
+
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/submit" element={<UploadPage />} />

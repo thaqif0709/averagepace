@@ -81,7 +81,6 @@ export default function LeaderboardPage() {
         <table>
           <thead>
             <tr>
-              <th>#</th>
               <th>Runner</th>
               <th>Time</th>
               <th>Pace</th>
@@ -91,11 +90,13 @@ export default function LeaderboardPage() {
           <tbody>
             {rows.map((row, i) => (
               <tr key={row.id}>
-                <td className="rank">{i + 1}</td>
-                <td>{row.runner_name}</td>
-                <td className="time-cell">{formatDuration(row.duration_s)}</td>
-                <td>{formatPace(row.pace_sec_per_km)}</td>
-                <td>
+                <td className="runner-cell" data-label="Runner">
+                  <span className="rank">{i + 1}</span>
+                  <span>{row.runner_name}</span>
+                </td>
+                <td className="time-cell" data-label="Time">{formatDuration(row.duration_s)}</td>
+                <td data-label="Pace">{formatPace(row.pace_sec_per_km)}</td>
+                <td data-label="Trust">
                   <span className={`tier-dot ${row.tier}`}></span>
                   {row.tier} · {row.trust_score}
                 </td>

@@ -117,7 +117,15 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
 - **Storage** — PostgreSQL (was SQLite pre-restructure)
 - **Design system** — light, welcoming palette (cream/charcoal/teal accent),
   WCAG AA contrast-checked; re-themed from an earlier dark/orange version.
-  Documented at the top of `frontend/src/index.css`.
+  Type: Inter (body), Inter Tight (headings only, tighter optical sizing for
+  large text), Space Mono (all numerals/times, the signature element) - fluid
+  `clamp()` sizing on h1 and the split-time readout instead of fixed
+  breakpoint jumps. Softer layered shadows and larger radii than the original
+  flat-3px version. Nav collapses into a hamburger/slide-down menu below
+  860px (`.nav-toggle`/`.mobile-menu` in `App.jsx` + `index.css`); the
+  leaderboard table becomes labeled cards below 600px instead of hiding a
+  column (`data-label` attributes in `LeaderboardPage.jsx`, CSS-only card
+  layout). Documented at the top of `frontend/src/index.css`.
 
 ## Known gaps / not yet built
 
