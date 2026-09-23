@@ -38,7 +38,7 @@ export default function FollowListPage({ mode }) {
   const title = mode === 'followers' ? 'Followers' : 'Following'
 
   return (
-    <div className="wrap">
+    <div className="wrap wide">
       <p className="eyebrow">{title}</p>
       <h1>{title}</h1>
 

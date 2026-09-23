@@ -39,7 +39,7 @@ export default function UploadPage() {
   const result = response?.result
 
   return (
-    <div className="wrap">
+    <div className="wrap wide">
       <p className="eyebrow">No subscription. No segments. Just your time.</p>
       <h1>Log your official run.<br />See where it ranks.</h1>
       <p className="lede">
@@ -52,6 +52,7 @@ export default function UploadPage() {
 
       {loading && null}
 
+      <div className="narrow-col">
       {!loading && !user && (
         <div className="result-card">
           <p style={{ marginTop: 0 }}>Sign in with Google to submit a run — this ties it to your profile.</p>
@@ -168,6 +169,7 @@ export default function UploadPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }
