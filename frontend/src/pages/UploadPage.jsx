@@ -68,11 +68,10 @@ export default function UploadPage() {
       <p className="eyebrow">No subscription. No segments. Just your time.</p>
       <h1>Log your official run.<br />See where it ranks.</h1>
       <p className="lede">
-        Start with the link to your official race result. We can't read the
-        page for you — a lot of race-timing sites actively block automated
-        access — so you'll type in what it shows, but the link travels with
-        your entry as a citation anyone can click through and check, and it's
-        what earns the trust bump over a bare claim.
+        Start with the link to your official race result, then type in what
+        it shows. The link travels with your entry as a citation anyone can
+        click through and check — that's what earns the trust bump over a
+        bare claim.
       </p>
 
       {loading && null}
