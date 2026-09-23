@@ -262,20 +262,20 @@ export default function ProfilePage() {
           <h2>Best efforts</h2>
           <div className="best-efforts-grid">
             {bestEfforts.map((be) => (
-              <div key={be.distance_bucket} className="best-effort-card">
+              <Link
+                key={be.distance_bucket}
+                to={`/profile/${profile.id}/best/${be.distance_bucket}`}
+                className="best-effort-card"
+              >
                 <div className="best-effort-label">{DISTANCE_LABELS[be.distance_bucket] ?? be.distance_bucket}</div>
                 <div className="best-effort-time">{formatDuration(be.duration_s)}</div>
                 <div className="best-effort-meta">
                   <span className={`tier-dot ${be.tier}`}></span>
                   {formatPace(be.pace_sec_per_km)}
                   {be.time_type && <span className="time-type-tag">{be.time_type}</span>}
-                  {be.result_url && (
-                    <a href={be.result_url} target="_blank" rel="noopener noreferrer" className="post-result-link">
-                      ↗
-                    </a>
-                  )}
                 </div>
-              </div>
+                {be.event_name && <div className="best-effort-event">{be.event_name}</div>}
+              </Link>
             ))}
           </div>
         </>

@@ -25,10 +25,12 @@ from database import (
     get_pending_follow_requests,
     get_posts_for_user,
     get_user_public,
+    get_user_runs_by_distance,
     get_vouch_count,
     init_db,
     insert_run,
     set_user_privacy,
+    suggest_event_names,
     unfollow_user,
     unvouch_for_run,
     update_post,
@@ -170,6 +172,27 @@ def user_best_efforts(user_id: int, current_user: dict = Depends(get_current_use
     return {"best_efforts": get_best_efforts(user_id), "gated": False}
 
 
+@app.get("/api/users/{user_id}/runs")
+def user_runs(user_id: int, distance: str, current_user: dict = Depends(get_current_user_optional)):
+    if distance not in DISTANCE_LABELS:
+        raise HTTPException(status_code=400, detail="Invalid distance")
+    user = get_user_public(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    viewer_id = current_user["id"] if current_user else None
+    if not can_view_private_content(user_id, viewer_id, user["is_private"]):
+        return {"runs": [], "gated": True, "distance": distance}
+    return {"runs": get_user_runs_by_distance(user_id, distance), "gated": False, "distance": distance}
+
+
+@app.get("/api/events/suggest")
+def event_suggestions(q: str = ""):
+    clean_q = q.strip()
+    if len(clean_q) < 2:
+        return {"suggestions": []}
+    return {"suggestions": suggest_event_names(clean_q)}
+
+
 @app.get("/api/users/{user_id}/followers")
 def user_followers(user_id: int, current_user: dict = Depends(get_current_user_optional)):
     user = get_user_public(user_id)
@@ -249,6 +272,7 @@ async def upload(
     claimed_duration_s: float | None = Form(None),
     result_url: str | None = Form(None),
     time_type: str | None = Form(None),
+    event_name: str | None = Form(None),
     caption: str | None = Form(None),
     gpx_file: UploadFile | None = File(None),
     current_user: dict = Depends(get_current_user),
@@ -268,6 +292,10 @@ async def upload(
     if clean_time_type and clean_time_type not in ("gun", "chip"):
         raise HTTPException(status_code=400, detail="Time type must be 'gun' or 'chip'")
 
+    clean_event_name = (event_name or "").strip() or None
+    if clean_event_name and len(clean_event_name) > 200:
+        raise HTTPException(status_code=400, detail="Event name is too long (max 200 characters)")
+
     if has_gpx:
         gpx_bytes = await gpx_file.read()
         result = analyze_gpx_bytes(gpx_bytes, claimed_distance_km=claimed_distance_km)
@@ -280,6 +308,7 @@ async def upload(
             result = unverified_result(claimed_distance_km, claimed_duration_s)
 
     result["time_type"] = clean_time_type
+    result["event_name"] = clean_event_name
 
     saved = False
     error = None
@@ -297,6 +326,7 @@ async def upload(
             gpx_hash=result["file_hash"],
             result_url=result.get("result_url"),
             time_type=clean_time_type,
+            event_name=clean_event_name,
         )
         if saved:
             create_post(user_id=current_user["id"], body=(caption or "").strip() or None, run_id=run_id)

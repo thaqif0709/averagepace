@@ -489,6 +489,62 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shado
   vertical-align: middle;
 }
 
+.autocomplete { position: relative; }
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid rgba(42,40,35,0.12);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.autocomplete-list li + li { margin-top: 2px; }
+.autocomplete-list button {
+  width: 100%;
+  margin-top: 0;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.autocomplete-list button:hover, .autocomplete-list button:focus-visible {
+  background: var(--surface-2);
+  filter: none;
+  outline: none;
+}
+.autocomplete-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-dim);
+  flex-shrink: 0;
+}
+
+.result-event-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-dim);
+  margin: 0;
+}
+
 /* --- leaderboard table (card layout on narrow screens, see media query) --- */
 table {
   width: 100%;
@@ -766,11 +822,27 @@ tbody tr:nth-child(1) .rank {
   margin-bottom: 40px;
 }
 .best-effort-card {
+  display: block;
   background: var(--surface);
   border: 1px solid rgba(42,40,35,0.07);
   border-radius: var(--radius-md);
   padding: 20px;
   box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+.best-effort-card:hover, .best-effort-card:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+.best-effort-event {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .best-effort-label {
   font-family: var(--mono);

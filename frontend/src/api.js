@@ -18,7 +18,7 @@ export async function fetchMe(token) {
   return res.json()
 }
 
-export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, resultUrl, timeType, caption }) {
+export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, resultUrl, timeType, eventName, caption }) {
   const form = new FormData()
   form.append('claimed_distance_km', claimedDistanceKm)
   if (gpxFile) {
@@ -28,6 +28,7 @@ export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gp
   }
   if (resultUrl) form.append('result_url', resultUrl)
   if (timeType) form.append('time_type', timeType)
+  if (eventName) form.append('event_name', eventName)
   if (caption) form.append('caption', caption)
 
   const res = await fetch(`${API_URL}/api/upload`, {
@@ -104,6 +105,20 @@ export async function fetchUserPosts(userId, token) {
 export async function fetchBestEfforts(userId, token) {
   const res = await fetch(`${API_URL}/api/users/${userId}/best-efforts`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load best efforts')
+  return res.json()
+}
+
+export async function fetchUserRunsByDistance(userId, distance, token) {
+  const params = new URLSearchParams({ distance })
+  const res = await fetch(`${API_URL}/api/users/${userId}/runs?${params}`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Failed to load runs')
+  return res.json()
+}
+
+export async function fetchEventSuggestions(query) {
+  const params = new URLSearchParams({ q: query })
+  const res = await fetch(`${API_URL}/api/events/suggest?${params}`)
+  if (!res.ok) throw new Error('Failed to load suggestions')
   return res.json()
 }
 

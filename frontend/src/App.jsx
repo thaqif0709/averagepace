@@ -7,6 +7,7 @@ import UploadPage from './pages/UploadPage.jsx'
 import LeaderboardPage from './pages/LeaderboardPage.jsx'
 import ProfilePage, { ProfileRedirect } from './pages/ProfilePage.jsx'
 import FollowListPage from './pages/FollowListPage.jsx'
+import BestEffortDetailPage from './pages/BestEffortDetailPage.jsx'
 
 export default function App() {
   const { user, loading, logout } = useAuth()
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/profile" element={<ProfileRedirect />} />
         <Route path="/profile/:userId" element={<ProfilePage />} />
+        <Route path="/profile/:userId/best/:distanceBucket" element={<BestEffortDetailPage />} />
         <Route path="/profile/:userId/followers" element={<FollowListPage mode="followers" />} />
         <Route path="/profile/:userId/following" element={<FollowListPage mode="following" />} />
       </Routes>

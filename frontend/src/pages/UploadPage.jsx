@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../auth.jsx'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
-import { submitRun } from '../api.js'
+import { submitRun, fetchEventSuggestions } from '../api.js'
 import { autoFormatDurationInput, formatDuration, formatPace, parseDuration } from '../format.js'
 
 export default function UploadPage() {
@@ -10,10 +10,33 @@ export default function UploadPage() {
   const [manualTime, setManualTime] = useState('')
   const [resultUrl, setResultUrl] = useState('')
   const [timeType, setTimeType] = useState('gun')
+  const [eventName, setEventName] = useState('')
+  const [eventSuggestions, setEventSuggestions] = useState([])
+  const [showEventSuggestions, setShowEventSuggestions] = useState(false)
   const [caption, setCaption] = useState('')
   const [response, setResponse] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [networkError, setNetworkError] = useState(null)
+
+  useEffect(() => {
+    const query = eventName.trim()
+    if (query.length < 2) {
+      setEventSuggestions([])
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      fetchEventSuggestions(query)
+        .then((data) => {
+          if (!cancelled) setEventSuggestions(data.suggestions)
+        })
+        .catch(() => {})
+    }, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [eventName])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -27,7 +50,7 @@ export default function UploadPage() {
 
     setSubmitting(true)
     try {
-      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, resultUrl, timeType, caption })
+      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, resultUrl, timeType, eventName, caption })
       setResponse(data)
       setCaption('')
     } catch (err) {
@@ -83,6 +106,47 @@ export default function UploadPage() {
               Open it yourself, then type what it shows below. We don't fetch
               it on our end, but it's saved as a citation on your entry that
               anyone — including other runners — can click through and check.
+            </p>
+
+            <label htmlFor="event_name">Event name (optional)</label>
+            <div className="autocomplete">
+              <input
+                type="text"
+                id="event_name"
+                placeholder="e.g. Klang Marathon 2026"
+                maxLength={200}
+                autoComplete="off"
+                value={eventName}
+                onChange={(e) => {
+                  setEventName(e.target.value)
+                  setShowEventSuggestions(true)
+                }}
+                onFocus={() => setShowEventSuggestions(true)}
+                onBlur={() => setShowEventSuggestions(false)}
+              />
+              {showEventSuggestions && eventSuggestions.length > 0 && (
+                <ul className="autocomplete-list">
+                  {eventSuggestions.map((s) => (
+                    <li key={s.name}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setEventName(s.name)
+                          setShowEventSuggestions(false)
+                        }}
+                      >
+                        <span>{s.name}</span>
+                        <span className="autocomplete-count">{s.use_count}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="hint">
+              Start typing and we'll suggest names other runners have already
+              used, so the same event stays tagged the same way.
             </p>
 
             <div className="form-row">
@@ -165,6 +229,7 @@ export default function UploadPage() {
             {result.tier === 'yellow' && (result.file_hash ? 'Device-synced — needs review' : 'Official result linked')}
             {result.tier === 'red' && (result.file_hash ? 'Flagged — manual review required' : 'Unverified — no official link provided')}
           </span>
+          {result.event_name && <p className="result-event-name">{result.event_name}</p>}
           <div className="split-readout">
             {formatDuration(result.duration_s)}
             {result.time_type && <span className="time-type-tag">{result.time_type} time</span>}

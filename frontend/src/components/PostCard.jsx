@@ -115,7 +115,10 @@ export default function PostCard({ post, onUpdated }) {
         {post.run_id && (
           <div className="post-activity">
             <span className={`tier-dot ${post.tier}`}></span>
-            <span className="post-activity-item">{DISTANCE_LABELS[post.distance_bucket] ?? post.distance_bucket}</span>
+            <span className="post-activity-item">
+              {DISTANCE_LABELS[post.distance_bucket] ?? post.distance_bucket}
+              {post.event_name && ` — ${post.event_name}`}
+            </span>
             <span className="post-activity-item time-cell">
               {formatDuration(post.duration_s)}
               {post.time_type && <span className="time-type-tag">{post.time_type}</span>}

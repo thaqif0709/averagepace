@@ -155,7 +155,23 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   zero-filled. Shown as a small card grid near the top of the profile page
   (`ProfilePage.jsx`, ordered 5K→10K→Half→Marathon), gated by the same
   `can_view_private_content` privacy check as posts. Requested explicitly as
-  a Strava feature that's normally paywalled there.
+  a Strava feature that's normally paywalled there. Each card links to
+  `/profile/:userId/best/:distanceBucket` (`BestEffortDetailPage.jsx`,
+  backed by `GET /api/users/{id}/runs?distance=`), a drill-down listing every
+  submission at that one distance, fastest first - reuses the leaderboard's
+  `<table>`/`data-label` markup so it gets the same mobile card layout for
+  free.
+- **Event names** (`event_name` on `runs`, free text, optional, 200 char cap)
+  — typed in on `/submit`, no separate events table. As you type, `GET
+  /api/events/suggest?q=` (`suggest_event_names()`) autocompletes against
+  existing names via a case-insensitive prefix match, ranked by how many
+  runs already use that exact name - the mechanism that keeps everyone
+  converging on one spelling per event instead of "Klang Marathon" /
+  "klang marathon 2026" splintering apart. Private users' runs are excluded
+  from suggestions so a name can never hint at what a private account ran.
+  Shown next to the distance everywhere a run appears (e.g. "5K — Klang
+  Marathon 2026"). A dedicated per-event page (its own mini-leaderboard of
+  everyone who ran that event) was explicitly scoped out as too big for now.
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
   in the URL (shareable links); excludes runs by currently-private users

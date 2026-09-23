@@ -107,6 +107,10 @@ def init_db():
                     PRIMARY KEY (user_id, run_id)
                 )
             """)
+            # Optional free-text event name (e.g. "Klang Marathon 2026") - a
+            # no-op if already there. No separate events table yet; names are
+            # normalized only by the suggest-as-you-type autocomplete.
+            cur.execute("ALTER TABLE runs ADD COLUMN IF NOT EXISTS event_name TEXT")
         conn.commit()
     finally:
         conn.close()
@@ -356,7 +360,7 @@ POST_SELECT = """
         p.id, p.body, p.created_at, p.edited_at,
         u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar_url,
         r.id AS run_id, r.distance_bucket, r.distance_km, r.duration_s,
-        r.pace_sec_per_km, r.trust_score, r.tier, r.result_url, r.time_type,
+        r.pace_sec_per_km, r.trust_score, r.tier, r.result_url, r.time_type, r.event_name,
         COALESCE(v.vouch_count, 0) AS vouch_count,
         EXISTS (
             SELECT 1 FROM vouches WHERE run_id = r.id AND user_id = %s
@@ -449,17 +453,19 @@ def get_posts_for_user(user_id, viewer_id=None, limit=100):
 
 
 def insert_run(runner_name, user_id, distance_bucket, distance_km, duration_s,
-                pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url=None, time_type=None):
+                pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url=None, time_type=None,
+                event_name=None):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO runs (runner_name, user_id, distance_bucket, distance_km, duration_s,
-                                   pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url, time_type)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                   pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url, time_type,
+                                   event_name)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (runner_name, user_id, distance_bucket, distance_km, duration_s,
-                  pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url, time_type))
+                  pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url, time_type, event_name))
             new_id = cur.fetchone()[0]
         conn.commit()
         return True, new_id, None
@@ -509,6 +515,47 @@ def get_best_efforts(user_id):
                 ) ranked
                 WHERE rn = 1
             """, (user_id,))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def get_user_runs_by_distance(user_id, distance_bucket):
+    """All of this user's runs at one distance, fastest first - the drill-down
+    behind a Best Efforts card."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT runs.*, COALESCE(v.vouch_count, 0) AS vouch_count
+                FROM runs
+                LEFT JOIN (
+                    SELECT run_id, COUNT(*) AS vouch_count FROM vouches GROUP BY run_id
+                ) v ON v.run_id = runs.id
+                WHERE runs.user_id = %s AND runs.distance_bucket = %s AND runs.duration_s IS NOT NULL
+                ORDER BY runs.duration_s ASC, runs.id ASC
+            """, (user_id, distance_bucket))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def suggest_event_names(query, limit=8):
+    """Existing event names starting with query, most-used first - private
+    users' runs are excluded so a suggestion can never hint at what they ran."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT runs.event_name AS name, COUNT(*) AS use_count
+                FROM runs
+                LEFT JOIN users ON users.id = runs.user_id
+                WHERE runs.event_name ILIKE %s
+                  AND (users.is_private IS NULL OR users.is_private = FALSE)
+                GROUP BY runs.event_name
+                ORDER BY use_count DESC, runs.event_name ASC
+                LIMIT %s
+            """, (query.replace('%', r'\%').replace('_', r'\_') + '%', limit))
             return cur.fetchall()
     finally:
         conn.close()
