@@ -90,9 +90,11 @@ export default function HomePage() {
       )}
 
       <div className="filters">
-        <Link to="/?scope=following" className={scope === 'following' ? 'active' : ''}>
-          Following
-        </Link>
+        {user && (
+          <Link to="/?scope=following" className={scope === 'following' ? 'active' : ''}>
+            Following
+          </Link>
+        )}
         <Link to="/?scope=everyone" className={scope === 'everyone' ? 'active' : ''}>
           Everyone
         </Link>
