@@ -9,7 +9,7 @@ export default function UploadPage() {
   const [claimedDistanceKm, setClaimedDistanceKm] = useState('')
   const [manualTime, setManualTime] = useState('')
   const [resultUrl, setResultUrl] = useState('')
-  const [timeType, setTimeType] = useState('')
+  const [timeType, setTimeType] = useState('gun')
   const [caption, setCaption] = useState('')
   const [response, setResponse] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -118,27 +118,27 @@ export default function UploadPage() {
               automatically from distance and time.
             </p>
 
-            <label>Which time is this? (optional)</label>
+            <label>Which time is this?</label>
             <div className="segmented">
               <button
                 type="button"
                 className={timeType === 'gun' ? 'active' : ''}
-                onClick={() => setTimeType(timeType === 'gun' ? '' : 'gun')}
+                onClick={() => setTimeType('gun')}
               >
                 Gun time
               </button>
               <button
                 type="button"
                 className={timeType === 'chip' ? 'active' : ''}
-                onClick={() => setTimeType(timeType === 'chip' ? '' : 'chip')}
+                onClick={() => setTimeType('chip')}
               >
                 Chip time
               </button>
             </div>
             <p className="hint">
               Chip time starts when you cross the start line; gun time starts
-              when the race gun fires. Tagging it means anyone comparing your
-              entry to the result link knows which clock they're checking.
+              when the race gun fires. Most results default to gun time -
+              switch this if yours shows chip time instead.
             </p>
 
             <label htmlFor="caption">Add a note (optional)</label>
