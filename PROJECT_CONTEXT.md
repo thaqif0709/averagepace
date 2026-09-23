@@ -15,6 +15,10 @@ timing partnership (which requires business relationships with timing
 companies), it scores the trustworthiness of a runner's own uploaded GPX
 file, so anyone can submit an honest training or race run and get ranked.
 
+On top of the leaderboard sits a Twitter-style social layer: follow other
+runners, and a home feed (Following/Everyone) of text posts and run
+submissions, so ranking isn't the only reason to open the app.
+
 ## Naming history
 
 Went through ~30 candidate names before landing here (Trackrecord, Clocked,
@@ -35,20 +39,24 @@ Originally a single FastAPI process rendering server-side Jinja2 HTML with
 SQLite storage. Restructured into a real frontend/backend split:
 
 - **`backend/`** — FastAPI, JSON-only API (`/api/upload`, `/api/leaderboard`,
-  `/api/health`, `/api/auth/*`, `/api/profile/runs`). PostgreSQL via
-  `psycopg2` and a `DATABASE_URL` env var (no ORM — same hand-written SQL
-  style as before, just Postgres syntax). CORS is env-configurable
-  (`CORS_ORIGINS`) since the frontend is now a separate origin.
-  Auth (`auth.py`) verifies Google ID tokens directly and issues its own
-  30-day JWT session — no third-party auth service, no client secret needed
-  (Google's button-based sign-in only requires the Client ID to verify
-  tokens against).
-- **`frontend/`** — React + Vite SPA, `react-router-dom` for `/`,
-  `/leaderboard`, `/profile`. Calls the backend over `fetch`
-  (`frontend/src/api.js`). Auth state lives in a React context
-  (`frontend/src/auth.jsx`), session token in `localStorage`. No server-side
-  rendering; the design system (`frontend/src/index.css`) started as a port
-  of the old `static/style.css`, since re-themed from dark to light.
+  `/api/health`, `/api/auth/*`, `/api/feed`, `/api/posts`, `/api/users/*`).
+  PostgreSQL via `psycopg2` and a `DATABASE_URL` env var (no ORM — same
+  hand-written SQL style as before, just Postgres syntax). CORS is
+  env-configurable (`CORS_ORIGINS`) since the frontend is now a separate
+  origin. Auth (`auth.py`) verifies Google ID tokens directly and issues its
+  own 30-day JWT session — no third-party auth service, no client secret
+  needed (Google's button-based sign-in only requires the Client ID to
+  verify tokens against). `get_current_user_optional` lets endpoints (feed,
+  public profiles) behave differently for signed-in vs. anonymous callers
+  without requiring auth.
+- **`frontend/`** — React + Vite SPA, `react-router-dom` for `/` (feed),
+  `/submit`, `/leaderboard`, `/profile/:userId` (+ `/followers`,
+  `/following`). Calls the backend over `fetch` (`frontend/src/api.js`).
+  Auth state lives in a React context (`frontend/src/auth.jsx`), session
+  token in `localStorage`. No server-side rendering; the design system
+  (`frontend/src/index.css`) started as a port of the old `static/style.css`,
+  since re-themed from dark/orange to a lighter, welcoming light theme
+  (WCAG AA contrast-checked).
 - **`docker-compose.yml`** at repo root — local Postgres for dev, matching
   `backend/.env.example`.
 
@@ -59,16 +67,27 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
 ## Current feature set (built + tested)
 
 - **Auth** — Google sign-in (button-based, no redirect flow), our own
-  30-day JWT session stored in `localStorage`. Submitting requires being
-  signed in; viewing the leaderboard doesn't.
-- **Profile page** (`/profile`) — name/email/avatar from Google, list of
-  your own submissions (any tier, including ones hidden from the public
-  leaderboard)
-- **Upload flow** (`/`) — claimed distance, plus either a manually entered
-  time (pace auto-computed) or a GPX file upload. GPX always wins if both
-  are given. No GPX means no automated checks - saved as an unverified
-  tier=red/score=0 entry instead (see `unverified_result()` in `trust_score.py`).
-  Runner name comes from the authenticated Google account, not typed in.
+  30-day JWT session stored in `localStorage`. Submitting/posting/following
+  requires being signed in; viewing the leaderboard, the "Everyone" feed, and
+  public profiles doesn't.
+- **Social layer** — Twitter-style. Users follow/unfollow each other
+  (`follows` table); posts (`posts` table) are either free-text or linked to
+  a run (`run_id`), so a scored submission and a text update share one feed.
+  - **Home feed** (`/`) — "Following" and "Everyone" tabs (URL-driven via
+    `?scope=`), a composer for text posts when signed in.
+  - **Public profile** (`/profile/:userId`) — anyone's avatar, name,
+    follower/following counts, follow button (hidden on your own profile or
+    when logged out), and their post history. Deliberately excludes email —
+    `get_user_public()` in `database.py` only ever selects `id, name, avatar_url`.
+  - **Follower/following lists** (`/profile/:userId/followers|following`)
+- **Upload flow** (`/submit`) — claimed distance, plus either a manually
+  entered time (auto-formatted as you type, e.g. `2548` → `25:48`; pace
+  auto-computed) or a GPX file upload, plus an optional caption. GPX always
+  wins if both are given. No GPX means no automated checks — saved as an
+  unverified tier=red/score=0 entry instead (see `unverified_result()` in
+  `trust_score.py`). Runner name comes from the authenticated Google account.
+  A successful submission also creates a feed post linking the run, with the
+  caption as its body.
 - **Trust scoring** (`backend/trust_score.py`) — five automated checks per
   upload: GPS speed jumps, pace-floor plausibility, claimed-vs-GPS distance
   mismatch, elevation sanity, duplicate-file detection (SHA-256 hash)
@@ -78,9 +97,9 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
   in the URL (shareable links)
 - **Storage** — PostgreSQL (was SQLite pre-restructure)
-- **Design system** — "finish-line results board" identity: digital-timer
-  monospace font (Space Mono) for all times, asphalt/chalk/lane-yellow
-  palette. Documented at the top of `frontend/src/index.css`.
+- **Design system** — light, welcoming palette (cream/charcoal/teal accent),
+  WCAG AA contrast-checked; re-themed from an earlier dark/orange version.
+  Documented at the top of `frontend/src/index.css`.
 
 ## Known gaps / not yet built
 
@@ -108,14 +127,24 @@ These were flagged as important before showing this to real users:
    was already stored as free text) but aren't "claimed" by any profile.
    Fine at this scale; would need a decision if this ever had real users
    before auth existed.
+8. **No notifications** — following someone or having someone comment/like
+   (likes don't exist yet either) triggers nothing. Feed/profile are
+   pull-only; you find out by checking.
+9. **Feed and profile posts have no pagination** — `get_feed()` and
+   `get_posts_for_user()` in `database.py` return a fixed `LIMIT` (50/100)
+   with no cursor/offset. Fine at current scale, will silently truncate
+   once any user or the global feed passes that count.
 
 ## Natural next steps, roughly in priority order
 
 1. Validate trust-score thresholds against real GPX data (cheap, do this first)
 2. Strava OAuth sync (removes the biggest friction point for adoption)
-3. Deploy: backend + managed Postgres on Render/Fly.io/Railway, frontend on Vercel/Netlify
-4. Rate limiting per account
-5. Community flagging for yellow-tier entries
+3. Rate limiting per account
+4. Pagination on feed/profile posts before either can grow past the hardcoded limit
+5. Notifications (new follower, new post from someone you follow)
+6. Community flagging for yellow-tier entries
+
+Deployment is already live — see "Deployment (live)" below.
 
 ## Tech stack
 
@@ -125,30 +154,50 @@ These were flagged as important before showing this to real users:
 - GPX parsing: `gpxpy`
 - No other external services integrated
 
+## Deployment (live)
+
+Free tier, three services (see `DEPLOY.md` for the from-scratch setup):
+
+- **Frontend** — Netlify, `https://averagepace.netlify.app`
+- **Backend** — Render, `https://averagepace-api.onrender.com` (free plan
+  sleeps after 15 min idle; first request after that takes ~30-50s)
+- **Database** — Neon Postgres
+
+`CORS_ORIGINS` on Render must match the Netlify URL exactly or every fetch
+from the frontend fails with a generic "Failed to fetch" (bitten by this
+twice — always curl an OPTIONS preflight to confirm before assuming the
+frontend/backend code itself is broken).
+
 ## Files
 
 ```
 backend/
-  main.py              — FastAPI app + routes (health, auth, upload, leaderboard, profile)
-  auth.py               — Google ID token verification, session JWT issue/verify, get_current_user
+  main.py              — FastAPI app + routes (health, auth, upload, leaderboard, feed, posts, users/follow)
+  auth.py               — Google ID token verification, session JWT issue/verify,
+                           get_current_user (required) / get_current_user_optional (public-but-auth-aware)
   trust_score.py        — GPX analysis + scoring logic (the core IP, unchanged since v1)
-  database.py           — Postgres schema + queries (runs, users)
+  database.py           — Postgres schema + queries (runs, users, follows, posts)
   requirements.txt
   .env.example           — DATABASE_URL, CORS_ORIGINS, GOOGLE_CLIENT_ID, SESSION_SECRET
 frontend/
   src/
     main.jsx             — React entry point, router + AuthProvider setup
-    App.jsx               — top nav (sign-in / profile+sign-out) + route table
+    App.jsx               — top nav (Home/Submit/Leaderboard/Profile+sign-out) + route table
     auth.jsx              — AuthContext: token/user state, localStorage persistence
     api.js                — fetch wrapper for the backend API
-    format.js              — duration/pace parsing + formatting
+    format.js              — duration/pace parsing + formatting, live time-input auto-format
     index.css              — design system (light theme)
     components/
       GoogleSignInButton.jsx — wraps Google Identity Services' button
+      PostCard.jsx            — one feed/profile post: author, timestamp, optional text,
+                                 optional embedded run card
     pages/
-      UploadPage.jsx        — gated behind sign-in
-      LeaderboardPage.jsx    — public
-      ProfilePage.jsx        — your own submissions, redirects home if signed out
+      HomePage.jsx           — `/`, the feed (Following/Everyone tabs + composer)
+      UploadPage.jsx          — `/submit`, gated behind sign-in, optional caption
+      LeaderboardPage.jsx      — public
+      ProfilePage.jsx          — `/profile/:userId`, any user's profile + follow button
+                                 (also exports ProfileRedirect for bare `/profile`)
+      FollowListPage.jsx       — `/profile/:userId/followers` and `/following`
   index.html             — loads the Google Identity Services script
   package.json
   vite.config.js

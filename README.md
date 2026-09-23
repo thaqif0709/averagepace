@@ -45,9 +45,16 @@ npm run dev
 
 Then open http://localhost:5173
 
-- `/` — sign in with Google, upload a GPX file (or enter a time manually), get added to the leaderboard
+- `/` — the feed: "Following" (requires sign-in) and "Everyone" (public) tabs,
+  Twitter-style. Signed-in users get a composer to post text updates.
+- `/submit` — sign in with Google, upload a GPX file (or enter a time
+  manually), get added to the leaderboard. An optional caption is posted to
+  the feed alongside the run.
 - `/leaderboard?distance=5k&tier=all` — view rankings, no sign-in needed (distance: 5k, 10k, half, marathon; tier: all, green)
-- `/profile` — your own submission history, including entries hidden from the public leaderboard
+- `/profile` — redirects to your own `/profile/:userId`
+- `/profile/:userId` — any user's public profile: avatar, follower/following
+  counts, follow/unfollow button, and their posts
+- `/profile/:userId/followers` / `/following` — follower/following lists
 
 ## API
 
@@ -55,10 +62,17 @@ Then open http://localhost:5173
 - `POST /api/auth/google` — body `{"credential": "<google id token>"}`, returns `{token, user}`
 - `GET /api/auth/me` — current user, given `Authorization: Bearer <token>`
 - `POST /api/upload` — requires `Authorization: Bearer <token>`; multipart form:
-  `claimed_distance_km`, and either `gpx_file` or `claimed_duration_s`
-  (pace is computed from distance + duration; name comes from your Google account)
-- `GET /api/profile/runs` — your own submissions (any tier), requires auth
+  `claimed_distance_km`, optional `caption`, and either `gpx_file` or
+  `claimed_duration_s` (pace is computed from distance + duration; name comes
+  from your Google account). Creates a feed post linked to the run.
 - `GET /api/leaderboard?distance=5k&tier=all` — JSON rows, public
+- `GET /api/feed?scope=following|everyone` — feed posts; `following` requires auth
+- `POST /api/posts` — body `{"body": "<text>"}`, requires auth; text-only post (max 500 chars)
+- `GET /api/users/{user_id}` — public profile (name/avatar, follower/following
+  counts, `is_following`/`is_self` if a token is given); never exposes email
+- `GET /api/users/{user_id}/posts` — a user's posts (text + linked runs)
+- `GET /api/users/{user_id}/followers` / `/following` — follow lists
+- `POST` / `DELETE /api/users/{user_id}/follow` — follow/unfollow, requires auth
 
 CORS is controlled by `CORS_ORIGINS` in `backend/.env` (comma-separated origins).
 

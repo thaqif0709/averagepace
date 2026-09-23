@@ -9,6 +9,7 @@ export default function UploadPage() {
   const [claimedDistanceKm, setClaimedDistanceKm] = useState('')
   const [manualTime, setManualTime] = useState('')
   const [gpxFile, setGpxFile] = useState(null)
+  const [caption, setCaption] = useState('')
   const [response, setResponse] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [networkError, setNetworkError] = useState(null)
@@ -28,8 +29,9 @@ export default function UploadPage() {
 
     setSubmitting(true)
     try {
-      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile })
+      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, caption })
       setResponse(data)
+      setCaption('')
     } catch (err) {
       setNetworkError(err.message)
     } finally {
@@ -109,6 +111,16 @@ export default function UploadPage() {
               Verifies your time and distance automatically instead of trusting
               what you typed above.
             </p>
+
+            <label htmlFor="caption">Add a note (optional)</label>
+            <textarea
+              id="caption"
+              placeholder="How'd it go?"
+              maxLength={500}
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+            />
+            <p className="hint">Posted to your profile and to anyone following you.</p>
 
             <button type="submit" disabled={submitting}>
               {submitting ? 'Scoring…' : 'Score this run'}

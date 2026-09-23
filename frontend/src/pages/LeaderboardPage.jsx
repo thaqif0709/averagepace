@@ -107,7 +107,7 @@ export default function LeaderboardPage() {
       {!loading && !error && rows.length === 0 && (
         <div className="empty-state">
           No {distanceLabel} times yet. Be the first —{' '}
-          <Link to="/" style={{ color: 'var(--accent)' }}>
+          <Link to="/submit" style={{ color: 'var(--accent)' }}>
             submit a run
           </Link>
           .
