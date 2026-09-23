@@ -99,6 +99,11 @@ export default function PostCard({ post, onUpdated }) {
             <span className="post-activity-item">{DISTANCE_LABELS[post.distance_bucket] ?? post.distance_bucket}</span>
             <span className="post-activity-item time-cell">{formatDuration(post.duration_s)}</span>
             <span className="post-activity-item">{formatPace(post.pace_sec_per_km)}</span>
+            {post.result_url && (
+              <a href={post.result_url} target="_blank" rel="noopener noreferrer" className="post-result-link">
+                Official result ↗
+              </a>
+            )}
           </div>
         )}
       </div>

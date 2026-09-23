@@ -1,8 +1,9 @@
 # Averagepace
 
 A free, open leaderboard for 5K/10K/half/marathon times — for everyone, not
-just the elites. Built from raw GPX files instead of paid API access. See
-`backend/trust_score.py` for the scoring logic.
+just the elites. Log your official race results yourself; link the official
+result page and anyone can check it. See `backend/trust_score.py` for the
+scoring logic.
 
 Two pieces, deployed separately:
 - `backend/` — FastAPI JSON API, PostgreSQL storage
@@ -47,9 +48,10 @@ Then open http://localhost:5173
 
 - `/` — the feed: "Following" (requires sign-in) and "Everyone" (public) tabs,
   Twitter-style. Signed-in users get a composer to post text updates.
-- `/submit` — sign in with Google, upload a GPX file (or enter a time
-  manually), get added to the leaderboard. An optional caption is posted to
-  the feed alongside the run.
+- `/submit` — sign in with Google, enter your distance and time, and
+  optionally link your official race result — an optional caption is posted
+  to the feed alongside the run. (GPX upload still works via the API and
+  `trust_score.py` — it's just not exposed in this UI right now.)
 - `/leaderboard?distance=5k&tier=all` — view rankings, no sign-in needed (distance: 5k, 10k, half, marathon; tier: all, green)
 - `/profile` — redirects to your own `/profile/:userId`
 - `/profile/:userId` — any user's public profile: avatar, follower/following
@@ -71,9 +73,10 @@ auto-accepts anything left pending.
 - `GET /api/auth/me` — current user, given `Authorization: Bearer <token>`
 - `PATCH /api/auth/me` — body `{"is_private": bool}`, requires auth; toggles your own privacy
 - `POST /api/upload` — requires `Authorization: Bearer <token>`; multipart form:
-  `claimed_distance_km`, optional `caption`, and either `gpx_file` or
-  `claimed_duration_s` (pace is computed from distance + duration; name comes
-  from your Google account). Creates a feed post linked to the run.
+  `claimed_distance_km`, optional `caption` and `result_url` (must be a valid
+  `http(s)://` URL), and either `gpx_file` or `claimed_duration_s` (pace is
+  computed from distance + duration; name comes from your Google account).
+  Creates a feed post linked to the run.
 - `GET /api/leaderboard?distance=5k&tier=all` — JSON rows, public; excludes
   runs by users currently set to private
 - `GET /api/feed?scope=following|everyone` — feed posts; `following` requires
@@ -107,22 +110,30 @@ Render + Vercel/Netlify). `render.yaml`, `frontend/vercel.json`, and
 
 ## How the trust score works
 
-`backend/trust_score.py` checks each uploaded GPX against five things:
-1. **GPS speed jumps** — consecutive points implying >10 m/s (faster than a sprint) get flagged as bad/faked GPS
-2. **Pace floor** — pace faster than a safe margin below world-record pace per distance bucket gets flagged for manual review
-3. **Distance mismatch** — claimed distance vs. GPS-measured distance, >5% difference gets flagged
-4. **Elevation sanity** — implausible elevation gain relative to distance
-5. **Duplicate detection** — SHA-256 hash of the file, rejected if already submitted
+Three ways a submission earns its tier:
 
-Score maps to a tier: green (85+, high trust), yellow (50-84, needs review),
-red (<50, flagged). Only green/yellow are meant to be shown publicly by default;
-tune this once you have real submissions to calibrate against.
+1. **GPX file → green/yellow/red, automated.** `backend/trust_score.py`
+   checks the GPS track against five things: speed jumps (>10 m/s between
+   points), pace floor (faster than a safe margin below world-record pace),
+   distance mismatch vs. claimed distance (>5%), implausible elevation gain,
+   and duplicate-file detection (SHA-256 hash). Score maps to a tier: green
+   (85+), yellow (50-84), red (<50). Not currently exposed in the `/submit`
+   UI, but the endpoint and scoring logic are intact — see the `gpx_file`
+   field in the API section above.
+2. **Official result link → yellow, not automated.** Paste a link to your
+   race's official result page alongside your manually-entered time. We
+   don't fetch or parse it server-side — a lot of race-timing sites sit
+   behind bot protection that makes that unreliable, and defeating that
+   isn't something this app does. The link itself is the trust signal: it's
+   shown on the entry (leaderboard, feed, profile) so anyone can click
+   through and check it themselves. See `linked_result()` in `trust_score.py`.
+3. **Bare manual entry → red, unverified.** Just a distance and a time, no
+   GPX and no link. Recorded, but tier `red` / score 0, same as any other
+   flagged entry — excluded whenever the leaderboard is filtered to
+   verified-only. See `unverified_result()`.
 
-The GPX file itself is optional — enter your distance and time manually instead
-(pace is calculated for you) and it's still recorded, but as tier `red` / score 0
-with no automated checks run at all. Same treatment as any other flagged entry,
-so it's excluded whenever the leaderboard is filtered to verified-only.
-Attaching a GPX always takes priority over a manually-entered time.
+If a GPX file is provided it always takes priority over a manual time or a
+result link.
 
 ## Known limitations (read before treating this as production-ready)
 
@@ -130,8 +141,10 @@ Attaching a GPX always takes priority over a manually-entered time.
 - **Thresholds are estimates**, not validated against real-world GPX data. Before
   going public, run this against a batch of real watch exports (including your
   own training runs) to see how often legitimate runs get false-flagged as yellow/red.
-- **No image/photo verification, no race-result cross-check** — those were discussed
-  as a "green+" tier but aren't implemented here yet.
+- **Official result links aren't verified, just linked.** Nothing stops
+  someone from pasting an unrelated URL — the link is a citation other
+  humans can check, not a machine-verified cross-check. No image/photo
+  verification either.
 
 ## Natural next steps
 

@@ -81,6 +81,8 @@ def init_db():
             """)
             # Editable posts - a no-op if already there.
             cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ")
+            # Optional citation link to an official race result - a no-op if already there.
+            cur.execute("ALTER TABLE runs ADD COLUMN IF NOT EXISTS result_url TEXT")
         conn.commit()
     finally:
         conn.close()
@@ -330,7 +332,7 @@ POST_SELECT = """
         p.id, p.body, p.created_at, p.edited_at,
         u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar_url,
         r.id AS run_id, r.distance_bucket, r.distance_km, r.duration_s,
-        r.pace_sec_per_km, r.trust_score, r.tier
+        r.pace_sec_per_km, r.trust_score, r.tier, r.result_url
     FROM posts p
     JOIN users u ON u.id = p.user_id
     LEFT JOIN runs r ON r.id = p.run_id
@@ -416,17 +418,17 @@ def get_posts_for_user(user_id, limit=100):
 
 
 def insert_run(runner_name, user_id, distance_bucket, distance_km, duration_s,
-                pace_sec_per_km, trust_score, tier, flags, gpx_hash):
+                pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url=None):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO runs (runner_name, user_id, distance_bucket, distance_km, duration_s,
-                                   pace_sec_per_km, trust_score, tier, flags, gpx_hash)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                   pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (runner_name, user_id, distance_bucket, distance_km, duration_s,
-                  pace_sec_per_km, trust_score, tier, flags, gpx_hash))
+                  pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url))
             new_id = cur.fetchone()[0]
         conn.commit()
         return True, new_id, None

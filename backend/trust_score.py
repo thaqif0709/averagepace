@@ -43,8 +43,30 @@ def unverified_result(claimed_distance_km, claimed_duration_s):
     return {
         "score": 0,
         "tier": "red",
-        "flags": ["No GPX file provided — submission could not be verified."],
+        "flags": ["No GPX file or official result link provided — submission could not be verified."],
         "file_hash": None,
+        "result_url": None,
+        "duration_s": claimed_duration_s,
+        "distance_km": claimed_distance_km,
+        "pace_sec_per_km": pace_sec_per_km,
+        "distance_bucket": bucket_for_distance(claimed_distance_km),
+    }
+
+
+def linked_result(claimed_distance_km, claimed_duration_s, result_url):
+    """A manually-entered submission backed by a link to an official race result.
+    We don't fetch or parse the link server-side - plenty of race-timing sites sit
+    behind bot protection that makes that unreliable (and inappropriate to defeat).
+    The link itself is the trust signal: it's shown on the entry so anyone can click
+    through and check it, which is worth more than a bare claim but isn't the same
+    as our own automated GPS analysis - hence yellow, not green."""
+    pace_sec_per_km = claimed_duration_s / claimed_distance_km if claimed_distance_km else None
+    return {
+        "score": 60,
+        "tier": "yellow",
+        "flags": ["Backed by an official result link — not automatically verified, but anyone can check it."],
+        "file_hash": None,
+        "result_url": result_url,
         "duration_s": claimed_duration_s,
         "distance_km": claimed_distance_km,
         "pace_sec_per_km": pace_sec_per_km,

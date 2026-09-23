@@ -102,19 +102,35 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     automatically on going public) — see `get_leaderboard()` in `database.py`.
     There's no "block": declining a request only removes that one row,
     nothing stops the same person from immediately requesting again.
-- **Upload flow** (`/submit`) — claimed distance, plus either a manually
-  entered time (auto-formatted as you type, e.g. `2548` → `25:48`; pace
-  auto-computed) or a GPX file upload, plus an optional caption. GPX always
-  wins if both are given. No GPX means no automated checks — saved as an
-  unverified tier=red/score=0 entry instead (see `unverified_result()` in
-  `trust_score.py`). Runner name comes from the authenticated Google account.
-  A successful submission also creates a feed post linking the run, with the
-  caption as its body.
-- **Trust scoring** (`backend/trust_score.py`) — five automated checks per
-  upload: GPS speed jumps, pace-floor plausibility, claimed-vs-GPS distance
-  mismatch, elevation sanity, duplicate-file detection (SHA-256 hash)
-- **Trust tiers** — green (85+, high trust) / yellow (50-84, needs review) /
-  red (<50, flagged) — shown immediately with specific flags raised
+- **Upload flow** (`/submit`) — claimed distance plus a manually entered time
+  (auto-formatted as you type, e.g. `2548` → `25:48`; pace auto-computed),
+  an optional link to an official race result, and an optional caption.
+  Runner name comes from the authenticated Google account. A successful
+  submission also creates a feed post linking the run, with the caption as
+  its body. GPX upload is **not exposed in this UI** as of the pivot away
+  from device-file verification toward logging official races (see below) -
+  the `gpx_file` form field, `analyze_gpx_bytes()`, and the whole green/yellow
+  GPX-analysis path are all still there in `backend/`, untouched, reachable
+  directly via the API. Bringing the picker back is a pure frontend change.
+- **Trust scoring** (`backend/trust_score.py`) — three paths to a tier:
+  1. GPX file (API-only right now) → automated: five checks (GPS speed
+     jumps, pace-floor plausibility, claimed-vs-GPS distance mismatch,
+     elevation sanity, duplicate-file detection via SHA-256 hash) → green/
+     yellow/red by score.
+  2. Manual entry + an official result link (`result_url` on `runs`) →
+     always yellow/score 60, via `linked_result()`. Not machine-verified -
+     deliberately so, since checking it server-side would mean scraping
+     third-party race-timing sites, several of which (confirmed:
+     checkpointspot.asia) sit behind real Cloudflare bot-verification
+     challenges. Building something to auto-solve that wasn't something to
+     build regardless of feasibility - it's the site's explicit signal it
+     doesn't want automated access. The link itself is the trust signal:
+     shown as a citation on the entry (leaderboard, feed, profile) for any
+     human to click through and check.
+  3. Manual entry, no link → always red/score 0, via `unverified_result()`.
+- **Trust tiers** — green (85+, high trust, GPX-verified) / yellow (50-84,
+  either GPX-plausible-but-flagged or link-backed) / red (<50, no evidence at
+  all) — shown immediately with specific flags raised
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
   in the URL (shareable links); excludes runs by currently-private users
@@ -135,9 +151,10 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
 
 These were flagged as important before showing this to real users:
 
-1. **No OAuth sync** — GPX must be manually exported and uploaded. Adding
+1. **No OAuth sync** — GPX must be manually exported and uploaded (and isn't
+   even offered in the UI right now - see "Upload flow" above). Adding
    Strava API / Garmin Connect API sync would remove the biggest adoption
-   friction.
+   friction for that path, if it comes back.
 2. **No rate limiting** — a signed-in account could still script mass
    submissions.
 3. **Thresholds are estimates, not validated.** The pace floors, speed-jump
@@ -148,9 +165,12 @@ These were flagged as important before showing this to real users:
    false positives (legit runs getting flagged yellow/red).
 4. **No community moderation** — no way for other users to flag a
    suspicious-looking entry yet.
-5. **No race-result cross-check** — the original idea included an optional
-   "green+" tier that cross-references official race results (e.g. via the
-   Athlinks API) for extra verification. Not implemented.
+5. **Result links aren't cross-checked, just linked.** Runners can attach an
+   official race-result URL (yellow tier), but nothing on the backend fetches
+   or verifies it - deliberately, since the sites tend to sit behind bot
+   protection (see "Trust scoring" above). It's a citation for a human to
+   click, not a "green+" automated cross-check. Nothing stops pasting an
+   unrelated link.
 6. **No CI, no automated tests** — restructure was verified by hand
    end-to-end (see below), not by a test suite.
 7. **Old (pre-auth) entries have no `user_id`** — they still display (name
@@ -210,8 +230,10 @@ backend/
   main.py              — FastAPI app + routes (health, auth, upload, leaderboard, feed, posts, users/follow)
   auth.py               — Google ID token verification, session JWT issue/verify,
                            get_current_user (required) / get_current_user_optional (public-but-auth-aware)
-  trust_score.py        — GPX analysis + scoring logic (the core IP, unchanged since v1)
-  database.py           — Postgres schema + queries (runs, users, follows w/ pending/accepted status, posts)
+  trust_score.py        — GPX analysis (green/yellow/red), linked_result() (official-link
+                           submissions, always yellow), unverified_result() (bare claims, red)
+  database.py           — Postgres schema + queries (runs incl. result_url, users, follows
+                           w/ pending/accepted status, posts)
   requirements.txt
   .env.example           — DATABASE_URL, CORS_ORIGINS, GOOGLE_CLIENT_ID, SESSION_SECRET
 frontend/
@@ -228,7 +250,8 @@ frontend/
                                  optional embedded run card
     pages/
       HomePage.jsx           — `/`, the feed (Following/Everyone tabs + composer)
-      UploadPage.jsx          — `/submit`, gated behind sign-in, optional caption
+      UploadPage.jsx          — `/submit`, gated behind sign-in, distance/time + optional
+                                 official-result link + optional caption (no GPX picker)
       LeaderboardPage.jsx      — public
       ProfilePage.jsx          — `/profile/:userId`, any user's profile + follow button
                                  (Follow/Requested/Following); own profile also shows a

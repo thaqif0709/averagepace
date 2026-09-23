@@ -44,9 +44,9 @@ export default function LeaderboardPage() {
       <p className="eyebrow">Finish-line board</p>
       <h1>{distanceLabel} leaderboard</h1>
       <p className="lede">
-        Every runner here submitted a raw GPX file. Green means it passed every automated
-        check. Yellow means it's plausible but hasn't been cross-checked. Red never makes
-        it here.
+        Green means an automated GPS check passed. Yellow means it's backed by
+        an official result link — click ↗ to check it yourself. Red is a bare,
+        unverified claim.
       </p>
 
       <div className="filters">
@@ -99,6 +99,17 @@ export default function LeaderboardPage() {
                 <td data-label="Trust">
                   <span className={`tier-dot ${row.tier}`}></span>
                   {row.tier} · {row.trust_score}
+                  {row.result_url && (
+                    <a
+                      href={row.result_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="post-result-link"
+                      title="View official result"
+                    >
+                      ↗
+                    </a>
+                  )}
                 </td>
               </tr>
             ))}

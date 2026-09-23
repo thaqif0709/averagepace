@@ -8,7 +8,7 @@ export default function UploadPage() {
   const { user, token, loading } = useAuth()
   const [claimedDistanceKm, setClaimedDistanceKm] = useState('')
   const [manualTime, setManualTime] = useState('')
-  const [gpxFile, setGpxFile] = useState(null)
+  const [resultUrl, setResultUrl] = useState('')
   const [caption, setCaption] = useState('')
   const [response, setResponse] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -18,18 +18,15 @@ export default function UploadPage() {
     e.preventDefault()
     setNetworkError(null)
 
-    let claimedDurationS = null
-    if (!gpxFile) {
-      claimedDurationS = parseDuration(manualTime)
-      if (claimedDurationS == null) {
-        setNetworkError('Enter your time as MM:SS or H:MM:SS (e.g. 25:00), or attach a GPX file instead.')
-        return
-      }
+    const claimedDurationS = parseDuration(manualTime)
+    if (claimedDurationS == null) {
+      setNetworkError('Enter your time as MM:SS or H:MM:SS (e.g. 25:00).')
+      return
     }
 
     setSubmitting(true)
     try {
-      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, caption })
+      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, resultUrl, caption })
       setResponse(data)
       setCaption('')
     } catch (err) {
@@ -44,11 +41,12 @@ export default function UploadPage() {
   return (
     <div className="wrap">
       <p className="eyebrow">No subscription. No segments. Just your time.</p>
-      <h1>Submit your run.<br />See where it ranks.</h1>
+      <h1>Log your run.<br />See where it ranks.</h1>
       <p className="lede">
-        Upload the GPX file from your watch. We check the GPS track for physically
-        impossible pace, GPS jumps, and distance mismatches — then rank you against
-        every other runner who's submitted an honest file.
+        Enter your distance and time. Got an official race result? Paste the
+        link to it — we don't read it automatically, but it shows on your
+        entry so anyone can click through and check it, and it earns your
+        entry a trust bump on the leaderboard.
       </p>
 
       {loading && null}
@@ -87,8 +85,7 @@ export default function UploadPage() {
               type="text"
               inputMode="numeric"
               id="manual_time"
-              disabled={!!gpxFile}
-              required={!gpxFile}
+              required
               placeholder="e.g. 2548 → 25:48"
               value={manualTime}
               onChange={(e) => setManualTime(autoFormatDurationInput(e.target.value))}
@@ -96,20 +93,20 @@ export default function UploadPage() {
             <p className="hint">
               Just type the digits, right to left — seconds, then minutes, then
               hours. Pace is calculated automatically from distance and time.
-              Attaching a GPX file below gets you a verified score instead —
-              this field is ignored if you do.
             </p>
 
-            <label htmlFor="gpx_file">Or upload a GPX file (optional)</label>
+            <label htmlFor="result_url">Official result link (optional)</label>
             <input
-              type="file"
-              id="gpx_file"
-              accept=".gpx"
-              onChange={(e) => setGpxFile(e.target.files[0] || null)}
+              type="url"
+              id="result_url"
+              placeholder="https://results.example.com/..."
+              value={resultUrl}
+              onChange={(e) => setResultUrl(e.target.value)}
             />
             <p className="hint">
-              Verifies your time and distance automatically instead of trusting
-              what you typed above.
+              Link to your official race-timing result page. We don't read it
+              automatically, but anyone (including other runners) can click
+              through and check it — and it bumps your trust tier.
             </p>
 
             <label htmlFor="caption">Add a note (optional)</label>
@@ -133,8 +130,8 @@ export default function UploadPage() {
         <div className={`result-card tier-${result.tier}`}>
           <span className={`tier-pill tier-${result.tier}`}>
             {result.tier === 'green' && 'Verified — high trust'}
-            {result.tier === 'yellow' && 'Device-synced — needs review'}
-            {result.tier === 'red' && (result.file_hash ? 'Flagged — manual review required' : 'Unverified — no GPX provided')}
+            {result.tier === 'yellow' && (result.file_hash ? 'Device-synced — needs review' : 'Official result linked')}
+            {result.tier === 'red' && (result.file_hash ? 'Flagged — manual review required' : 'Unverified — no official link provided')}
           </span>
           <div className="split-readout">{formatDuration(result.duration_s)}</div>
           <div className="stat-row">
@@ -151,6 +148,13 @@ export default function UploadPage() {
               <div className="label">Trust score</div>
             </div>
           </div>
+          {result.result_url && (
+            <p className="result-link">
+              <a href={result.result_url} target="_blank" rel="noopener noreferrer">
+                View official result ↗
+              </a>
+            </p>
+          )}
           {result.flags?.length > 0 && (
             <div className="flags">
               <strong>Flags raised:</strong>

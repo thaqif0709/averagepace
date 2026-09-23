@@ -18,7 +18,7 @@ export async function fetchMe(token) {
   return res.json()
 }
 
-export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, caption }) {
+export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, resultUrl, caption }) {
   const form = new FormData()
   form.append('claimed_distance_km', claimedDistanceKm)
   if (gpxFile) {
@@ -26,6 +26,7 @@ export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gp
   } else if (claimedDurationS != null) {
     form.append('claimed_duration_s', claimedDurationS)
   }
+  if (resultUrl) form.append('result_url', resultUrl)
   if (caption) form.append('caption', caption)
 
   const res = await fetch(`${API_URL}/api/upload`, {

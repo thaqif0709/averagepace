@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -30,7 +31,7 @@ from database import (
     update_post,
     upsert_user,
 )
-from trust_score import analyze_gpx_bytes, unverified_result
+from trust_score import analyze_gpx_bytes, linked_result, unverified_result
 
 app = FastAPI(title="Averagepace API")
 
@@ -214,19 +215,32 @@ def decline_request(requester_id: int, current_user: dict = Depends(get_current_
 async def upload(
     claimed_distance_km: float = Form(...),
     claimed_duration_s: float | None = Form(None),
+    result_url: str | None = Form(None),
     caption: str | None = Form(None),
     gpx_file: UploadFile | None = File(None),
     current_user: dict = Depends(get_current_user),
 ):
     runner_name = current_user["name"]
     has_gpx = gpx_file is not None and gpx_file.filename
+
+    clean_result_url = (result_url or "").strip() or None
+    if clean_result_url:
+        if len(clean_result_url) > 2000:
+            raise HTTPException(status_code=400, detail="Result link is too long")
+        parsed = urlparse(clean_result_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise HTTPException(status_code=400, detail="Result link must be a valid http:// or https:// URL")
+
     if has_gpx:
         gpx_bytes = await gpx_file.read()
         result = analyze_gpx_bytes(gpx_bytes, claimed_distance_km=claimed_distance_km)
     else:
         if not claimed_duration_s:
             raise HTTPException(status_code=400, detail="Provide either a GPX file or your time.")
-        result = unverified_result(claimed_distance_km, claimed_duration_s)
+        if clean_result_url:
+            result = linked_result(claimed_distance_km, claimed_duration_s, clean_result_url)
+        else:
+            result = unverified_result(claimed_distance_km, claimed_duration_s)
 
     saved = False
     error = None
@@ -242,6 +256,7 @@ async def upload(
             tier=result["tier"],
             flags="; ".join(result["flags"]),
             gpx_hash=result["file_hash"],
+            result_url=result.get("result_url"),
         )
         if saved:
             create_post(user_id=current_user["id"], body=(caption or "").strip() or None, run_id=run_id)

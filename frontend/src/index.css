@@ -404,6 +404,15 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shado
 }
 .flags ul { margin: 8px 0 0; padding-left: 20px; color: var(--ink-dim); font-size: 14px; line-height: 1.7; }
 
+.result-link { margin: 16px 0 0; }
+.result-link a {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+}
+.result-link a:hover { text-decoration: underline; }
+
 .banner {
   padding: 14px 18px;
   border-radius: var(--radius-sm);
@@ -589,6 +598,14 @@ tbody tr:nth-child(1) .rank {
   flex-wrap: wrap;
 }
 .post-activity-item { color: var(--ink-dim); }
+.post-result-link {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  margin-left: auto;
+}
+.post-result-link:hover { text-decoration: underline; }
 .post-activity .time-cell { color: var(--ink); font-size: 15px; }
 
 .post-edit-btn {
