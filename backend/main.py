@@ -9,18 +9,23 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from auth import get_current_user, get_current_user_optional, issue_session_token, verify_google_credential
 from database import (
+    accept_follow_request,
+    can_view_private_content,
     create_post,
+    decline_follow_request,
     follow_user,
     get_feed,
     get_follow_counts,
+    get_follow_status,
     get_followers,
     get_following,
     get_leaderboard,
+    get_pending_follow_requests,
     get_posts_for_user,
     get_user_public,
     init_db,
     insert_run,
-    is_following,
+    set_user_privacy,
     unfollow_user,
     upsert_user,
 )
@@ -71,6 +76,13 @@ def auth_me(current_user: dict = Depends(get_current_user)):
     return current_user
 
 
+@app.patch("/api/auth/me")
+def update_me(body: dict = Body(...), current_user: dict = Depends(get_current_user)):
+    if "is_private" not in body:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    return set_user_privacy(current_user["id"], bool(body["is_private"]))
+
+
 @app.post("/api/posts")
 def create_text_post(body: dict = Body(...), current_user: dict = Depends(get_current_user)):
     text = (body.get("body") or "").strip()
@@ -100,30 +112,53 @@ def user_public_profile(user_id: int, current_user: dict = Depends(get_current_u
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     follower_count, following_count = get_follow_counts(user_id)
+    is_self = current_user is not None and current_user["id"] == user_id
+    if is_self:
+        follow_status = "self"
+    elif current_user:
+        follow_status = get_follow_status(current_user["id"], user_id)
+    else:
+        follow_status = "none"
     return {
         **user,
         "follower_count": follower_count,
         "following_count": following_count,
-        "is_following": is_following(current_user["id"], user_id) if current_user else False,
-        "is_self": current_user is not None and current_user["id"] == user_id,
+        "follow_status": follow_status,
+        "is_self": is_self,
     }
 
 
 @app.get("/api/users/{user_id}/posts")
-def user_posts(user_id: int):
-    if not get_user_public(user_id):
+def user_posts(user_id: int, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_public(user_id)
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"posts": get_posts_for_user(user_id)}
+    viewer_id = current_user["id"] if current_user else None
+    if not can_view_private_content(user_id, viewer_id, user["is_private"]):
+        return {"posts": [], "gated": True}
+    return {"posts": get_posts_for_user(user_id), "gated": False}
 
 
 @app.get("/api/users/{user_id}/followers")
-def user_followers(user_id: int):
-    return {"users": get_followers(user_id)}
+def user_followers(user_id: int, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_public(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    viewer_id = current_user["id"] if current_user else None
+    if not can_view_private_content(user_id, viewer_id, user["is_private"]):
+        return {"users": [], "gated": True}
+    return {"users": get_followers(user_id), "gated": False}
 
 
 @app.get("/api/users/{user_id}/following")
-def user_following(user_id: int):
-    return {"users": get_following(user_id)}
+def user_following(user_id: int, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_public(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    viewer_id = current_user["id"] if current_user else None
+    if not can_view_private_content(user_id, viewer_id, user["is_private"]):
+        return {"users": [], "gated": True}
+    return {"users": get_following(user_id), "gated": False}
 
 
 @app.post("/api/users/{user_id}/follow")
@@ -132,14 +167,33 @@ def follow(user_id: int, current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Can't follow yourself")
     if not get_user_public(user_id):
         raise HTTPException(status_code=404, detail="User not found")
-    follow_user(current_user["id"], user_id)
-    return {"following": True}
+    status = follow_user(current_user["id"], user_id)
+    return {"status": status}
 
 
 @app.delete("/api/users/{user_id}/follow")
 def unfollow(user_id: int, current_user: dict = Depends(get_current_user)):
     unfollow_user(current_user["id"], user_id)
-    return {"following": False}
+    return {"status": "none"}
+
+
+@app.get("/api/follow-requests")
+def follow_requests(current_user: dict = Depends(get_current_user)):
+    return {"requests": get_pending_follow_requests(current_user["id"])}
+
+
+@app.post("/api/follow-requests/{requester_id}/accept")
+def accept_request(requester_id: int, current_user: dict = Depends(get_current_user)):
+    if not accept_follow_request(current_user["id"], requester_id):
+        raise HTTPException(status_code=404, detail="No pending request from this user")
+    return {"status": "accepted"}
+
+
+@app.post("/api/follow-requests/{requester_id}/decline")
+def decline_request(requester_id: int, current_user: dict = Depends(get_current_user)):
+    if not decline_follow_request(current_user["id"], requester_id):
+        raise HTTPException(status_code=404, detail="No pending request from this user")
+    return {"status": "declined"}
 
 
 @app.post("/api/upload")

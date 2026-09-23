@@ -39,7 +39,8 @@ Originally a single FastAPI process rendering server-side Jinja2 HTML with
 SQLite storage. Restructured into a real frontend/backend split:
 
 - **`backend/`** — FastAPI, JSON-only API (`/api/upload`, `/api/leaderboard`,
-  `/api/health`, `/api/auth/*`, `/api/feed`, `/api/posts`, `/api/users/*`).
+  `/api/health`, `/api/auth/*`, `/api/feed`, `/api/posts`, `/api/users/*`,
+  `/api/follow-requests/*`).
   PostgreSQL via `psycopg2` and a `DATABASE_URL` env var (no ORM — same
   hand-written SQL style as before, just Postgres syntax). CORS is
   env-configurable (`CORS_ORIGINS`) since the frontend is now a separate
@@ -70,16 +71,33 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   30-day JWT session stored in `localStorage`. Submitting/posting/following
   requires being signed in; viewing the leaderboard, the "Everyone" feed, and
   public profiles doesn't.
-- **Social layer** — Twitter-style. Users follow/unfollow each other
+- **Social layer** — Twitter-style. Users follow each other
   (`follows` table); posts (`posts` table) are either free-text or linked to
   a run (`run_id`), so a scored submission and a text update share one feed.
   - **Home feed** (`/`) — "Following" and "Everyone" tabs (URL-driven via
-    `?scope=`), a composer for text posts when signed in.
+    `?scope=`), a composer for text posts when signed in. "Everyone" only
+    ever shows posts from public accounts.
   - **Public profile** (`/profile/:userId`) — anyone's avatar, name,
     follower/following counts, follow button (hidden on your own profile or
     when logged out), and their post history. Deliberately excludes email —
-    `get_user_public()` in `database.py` only ever selects `id, name, avatar_url`.
+    `get_user_public()` in `database.py` only ever selects
+    `id, name, avatar_url, is_private`.
   - **Follower/following lists** (`/profile/:userId/followers|following`)
+  - **Private accounts** — a user can flip `users.is_private` (toggle on
+    their own profile page). Follow-approval model, same idea as Instagram's
+    "private account"/Twitter's "protected Tweets": following a private
+    account creates a `follows` row with `status='pending'` instead of
+    instantly `'accepted'`; the target sees pending requests on their own
+    profile and can accept or decline (`/api/follow-requests/*`). Until
+    accepted, non-followers get `{"gated": true}` from the posts/followers/
+    following endpoints instead of real data — enforced server-side in
+    `main.py` via `can_view_private_content()`, not just hidden in the UI.
+    Going private does not affect existing (already-accepted) followers;
+    going public auto-accepts anything left pending. A private user's runs
+    are also excluded from the public `/leaderboard` while private (rejoins
+    automatically on going public) — see `get_leaderboard()` in `database.py`.
+    There's no "block": declining a request only removes that one row,
+    nothing stops the same person from immediately requesting again.
 - **Upload flow** (`/submit`) — claimed distance, plus either a manually
   entered time (auto-formatted as you type, e.g. `2548` → `25:48`; pace
   auto-computed) or a GPX file upload, plus an optional caption. GPX always
@@ -95,7 +113,7 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   red (<50, flagged) — shown immediately with specific flags raised
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
-  in the URL (shareable links)
+  in the URL (shareable links); excludes runs by currently-private users
 - **Storage** — PostgreSQL (was SQLite pre-restructure)
 - **Design system** — light, welcoming palette (cream/charcoal/teal accent),
   WCAG AA contrast-checked; re-themed from an earlier dark/orange version.
@@ -134,6 +152,10 @@ These were flagged as important before showing this to real users:
    `get_posts_for_user()` in `database.py` return a fixed `LIMIT` (50/100)
    with no cursor/offset. Fine at current scale, will silently truncate
    once any user or the global feed passes that count.
+10. **No blocking, just decline** — a private user can decline a follow
+    request, but nothing stops that person from immediately sending another
+    one. There's also no way to remove an existing (already-accepted)
+    follower short of them unfollowing themselves.
 
 ## Natural next steps, roughly in priority order
 
@@ -141,8 +163,9 @@ These were flagged as important before showing this to real users:
 2. Strava OAuth sync (removes the biggest friction point for adoption)
 3. Rate limiting per account
 4. Pagination on feed/profile posts before either can grow past the hardcoded limit
-5. Notifications (new follower, new post from someone you follow)
-6. Community flagging for yellow-tier entries
+5. Notifications (new follower, new follow request, new post from someone you follow)
+6. Blocking (stronger than decline - actually prevents a user from re-requesting or viewing your public info)
+7. Community flagging for yellow-tier entries
 
 Deployment is already live — see "Deployment (live)" below.
 
@@ -176,7 +199,7 @@ backend/
   auth.py               — Google ID token verification, session JWT issue/verify,
                            get_current_user (required) / get_current_user_optional (public-but-auth-aware)
   trust_score.py        — GPX analysis + scoring logic (the core IP, unchanged since v1)
-  database.py           — Postgres schema + queries (runs, users, follows, posts)
+  database.py           — Postgres schema + queries (runs, users, follows w/ pending/accepted status, posts)
   requirements.txt
   .env.example           — DATABASE_URL, CORS_ORIGINS, GOOGLE_CLIENT_ID, SESSION_SECRET
 frontend/
@@ -196,6 +219,8 @@ frontend/
       UploadPage.jsx          — `/submit`, gated behind sign-in, optional caption
       LeaderboardPage.jsx      — public
       ProfilePage.jsx          — `/profile/:userId`, any user's profile + follow button
+                                 (Follow/Requested/Following); own profile also shows a
+                                 privacy toggle and follow-requests inbox
                                  (also exports ProfileRedirect for bare `/profile`)
       FollowListPage.jsx       — `/profile/:userId/followers` and `/following`
   index.html             — loads the Google Identity Services script

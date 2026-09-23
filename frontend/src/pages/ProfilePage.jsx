@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import PostCard from '../components/PostCard.jsx'
-import { fetchUserProfile, fetchUserPosts, followUser, unfollowUser } from '../api.js'
+import {
+  acceptFollowRequest,
+  declineFollowRequest,
+  fetchFollowRequests,
+  fetchUserPosts,
+  fetchUserProfile,
+  followUser,
+  unfollowUser,
+  updatePrivacy,
+} from '../api.js'
 
 export function ProfileRedirect() {
   const { user, loading } = useAuth()
@@ -16,20 +25,25 @@ export default function ProfilePage() {
   const { user: viewer, token, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
+  const [postsGated, setPostsGated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [followBusy, setFollowBusy] = useState(false)
+  const [privacyBusy, setPrivacyBusy] = useState(false)
+  const [requests, setRequests] = useState([])
+  const [busyRequestId, setBusyRequestId] = useState(null)
 
   useEffect(() => {
     if (authLoading) return
     let cancelled = false
     setLoading(true)
     setError(null)
-    Promise.all([fetchUserProfile(userId, token), fetchUserPosts(userId)])
+    Promise.all([fetchUserProfile(userId, token), fetchUserPosts(userId, token)])
       .then(([profileData, postsData]) => {
         if (cancelled) return
         setProfile(profileData)
         setPosts(postsData.posts)
+        setPostsGated(postsData.gated)
       })
       .catch((err) => {
         if (!cancelled) setError(err.message)
@@ -42,22 +56,82 @@ export default function ProfilePage() {
     }
   }, [userId, token, authLoading])
 
+  useEffect(() => {
+    if (!profile?.is_self) return
+    let cancelled = false
+    fetchFollowRequests(token)
+      .then((data) => {
+        if (!cancelled) setRequests(data.requests)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [profile?.is_self, token])
+
   async function toggleFollow() {
     if (!profile) return
     setFollowBusy(true)
     setError(null)
     try {
-      if (profile.is_following) {
-        await unfollowUser(profile.id, token)
-        setProfile({ ...profile, is_following: false, follower_count: profile.follower_count - 1 })
+      if (profile.follow_status === 'none') {
+        const { status } = await followUser(profile.id, token)
+        setProfile({
+          ...profile,
+          follow_status: status,
+          follower_count: status === 'accepted' ? profile.follower_count + 1 : profile.follower_count,
+        })
       } else {
-        await followUser(profile.id, token)
-        setProfile({ ...profile, is_following: true, follower_count: profile.follower_count + 1 })
+        const wasAccepted = profile.follow_status === 'accepted'
+        await unfollowUser(profile.id, token)
+        setProfile({
+          ...profile,
+          follow_status: 'none',
+          follower_count: wasAccepted ? profile.follower_count - 1 : profile.follower_count,
+        })
       }
     } catch (err) {
       setError(err.message)
     } finally {
       setFollowBusy(false)
+    }
+  }
+
+  async function togglePrivacy() {
+    setPrivacyBusy(true)
+    setError(null)
+    try {
+      const updated = await updatePrivacy(token, !profile.is_private)
+      setProfile({ ...profile, is_private: updated.is_private })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setPrivacyBusy(false)
+    }
+  }
+
+  async function handleAccept(requesterId) {
+    setBusyRequestId(requesterId)
+    try {
+      await acceptFollowRequest(token, requesterId)
+      setRequests((prev) => prev.filter((r) => r.id !== requesterId))
+      setProfile((prev) => ({ ...prev, follower_count: prev.follower_count + 1 }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusyRequestId(null)
+    }
+  }
+
+  async function handleDecline(requesterId) {
+    setBusyRequestId(requesterId)
+    try {
+      await declineFollowRequest(token, requesterId)
+      setRequests((prev) => prev.filter((r) => r.id !== requesterId))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusyRequestId(null)
     }
   }
 
@@ -92,16 +166,75 @@ export default function ProfilePage() {
             type="button"
             onClick={toggleFollow}
             disabled={followBusy}
-            className={`follow-button ${profile.is_following ? 'following' : ''}`}
+            className={`follow-button ${
+              profile.follow_status === 'accepted' ? 'following' :
+              profile.follow_status === 'pending' ? 'requested' : ''
+            }`}
           >
-            {profile.is_following ? 'Following' : 'Follow'}
+            {profile.follow_status === 'accepted' && 'Following'}
+            {profile.follow_status === 'pending' && 'Requested'}
+            {profile.follow_status === 'none' && 'Follow'}
           </button>
         )}
       </div>
 
+      {profile.is_self && (
+        <div className="profile-settings">
+          <label className="privacy-toggle">
+            <input type="checkbox" checked={profile.is_private} onChange={togglePrivacy} disabled={privacyBusy} />
+            Private account
+          </label>
+          <p className="hint">
+            {profile.is_private
+              ? 'Only approved followers can see your posts, follower list, and following list. New followers need your approval.'
+              : 'Anyone can see your posts and follow you instantly.'}
+          </p>
+        </div>
+      )}
+
+      {profile.is_self && requests.length > 0 && (
+        <>
+          <h2>Follow requests</h2>
+          <div className="user-list">
+            {requests.map((r) => (
+              <div key={r.id} className="user-list-row follow-request-row">
+                <Link to={`/profile/${r.id}`} className="follow-request-user">
+                  {r.avatar_url ? (
+                    <img src={r.avatar_url} alt="" />
+                  ) : (
+                    <span className="avatar-fallback">{r.name?.[0]?.toUpperCase() ?? '?'}</span>
+                  )}
+                  <span>{r.name}</span>
+                </Link>
+                <div className="follow-request-actions">
+                  <button type="button" onClick={() => handleAccept(r.id)} disabled={busyRequestId === r.id}>
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    className="decline"
+                    onClick={() => handleDecline(r.id)}
+                    disabled={busyRequestId === r.id}
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       <h2>Posts</h2>
-      {posts.length === 0 && <div className="empty-state">No posts yet.</div>}
-      {posts.length > 0 && (
+      {postsGated && (
+        <div className="empty-state">
+          {profile.follow_status === 'pending'
+            ? 'This account is private. Your follow request is pending.'
+            : 'This account is private. Follow to see their posts.'}
+        </div>
+      )}
+      {!postsGated && posts.length === 0 && <div className="empty-state">No posts yet.</div>}
+      {!postsGated && posts.length > 0 && (
         <div className="feed">
           {posts.map((post) => (
             <PostCard key={post.id} post={post} />

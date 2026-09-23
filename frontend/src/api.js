@@ -80,21 +80,55 @@ export async function fetchUserProfile(userId, token) {
   return res.json()
 }
 
-export async function fetchUserPosts(userId) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/posts`)
+export async function fetchUserPosts(userId, token) {
+  const res = await fetch(`${API_URL}/api/users/${userId}/posts`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load posts')
   return res.json()
 }
 
-export async function fetchFollowers(userId) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/followers`)
+export async function fetchFollowers(userId, token) {
+  const res = await fetch(`${API_URL}/api/users/${userId}/followers`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load followers')
   return res.json()
 }
 
-export async function fetchFollowing(userId) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/following`)
+export async function fetchFollowing(userId, token) {
+  const res = await fetch(`${API_URL}/api/users/${userId}/following`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load following')
+  return res.json()
+}
+
+export async function updatePrivacy(token, isPrivate) {
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify({ is_private: isPrivate }),
+  })
+  if (!res.ok) throw new Error('Failed to update privacy')
+  return res.json()
+}
+
+export async function fetchFollowRequests(token) {
+  const res = await fetch(`${API_URL}/api/follow-requests`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Failed to load follow requests')
+  return res.json()
+}
+
+export async function acceptFollowRequest(token, requesterId) {
+  const res = await fetch(`${API_URL}/api/follow-requests/${requesterId}/accept`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) throw new Error('Failed to accept request')
+  return res.json()
+}
+
+export async function declineFollowRequest(token, requesterId) {
+  const res = await fetch(`${API_URL}/api/follow-requests/${requesterId}/decline`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) throw new Error('Failed to decline request')
   return res.json()
 }
 

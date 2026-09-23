@@ -53,26 +53,46 @@ Then open http://localhost:5173
 - `/leaderboard?distance=5k&tier=all` — view rankings, no sign-in needed (distance: 5k, 10k, half, marathon; tier: all, green)
 - `/profile` — redirects to your own `/profile/:userId`
 - `/profile/:userId` — any user's public profile: avatar, follower/following
-  counts, follow/unfollow button, and their posts
+  counts, follow button, and their posts. Your own profile also shows a
+  "Private account" toggle and a follow-requests inbox.
 - `/profile/:userId/followers` / `/following` — follower/following lists
+
+Setting your own profile to private (Instagram/Twitter-style "protected
+account"): new followers need your approval, non-followers can't see your
+posts or follower/following lists, and your runs drop off the public
+leaderboard until you go public again. Existing followers and any request
+still pending when you go public are unaffected — going public
+auto-accepts anything left pending.
 
 ## API
 
 - `GET /api/health` — liveness check
 - `POST /api/auth/google` — body `{"credential": "<google id token>"}`, returns `{token, user}`
 - `GET /api/auth/me` — current user, given `Authorization: Bearer <token>`
+- `PATCH /api/auth/me` — body `{"is_private": bool}`, requires auth; toggles your own privacy
 - `POST /api/upload` — requires `Authorization: Bearer <token>`; multipart form:
   `claimed_distance_km`, optional `caption`, and either `gpx_file` or
   `claimed_duration_s` (pace is computed from distance + duration; name comes
   from your Google account). Creates a feed post linked to the run.
-- `GET /api/leaderboard?distance=5k&tier=all` — JSON rows, public
-- `GET /api/feed?scope=following|everyone` — feed posts; `following` requires auth
+- `GET /api/leaderboard?distance=5k&tier=all` — JSON rows, public; excludes
+  runs by users currently set to private
+- `GET /api/feed?scope=following|everyone` — feed posts; `following` requires
+  auth and includes private accounts you're an approved follower of;
+  `everyone` only ever shows posts from public accounts
 - `POST /api/posts` — body `{"body": "<text>"}`, requires auth; text-only post (max 500 chars)
-- `GET /api/users/{user_id}` — public profile (name/avatar, follower/following
-  counts, `is_following`/`is_self` if a token is given); never exposes email
-- `GET /api/users/{user_id}/posts` — a user's posts (text + linked runs)
-- `GET /api/users/{user_id}/followers` / `/following` — follow lists
-- `POST` / `DELETE /api/users/{user_id}/follow` — follow/unfollow, requires auth
+- `GET /api/users/{user_id}` — public profile (name/avatar, `is_private`,
+  follower/following counts, `follow_status`: self/none/pending/accepted);
+  never exposes email
+- `GET /api/users/{user_id}/posts` / `/followers` / `/following` — gated for
+  private accounts: returns `{"gated": true, ...: []}` unless the caller is
+  the account itself or an approved follower
+- `POST` / `DELETE /api/users/{user_id}/follow` — follow/unfollow, requires
+  auth. Following a public account is instant (`{"status": "accepted"}`);
+  following a private one creates a request (`{"status": "pending"}`) until
+  approved. DELETE also cancels a still-pending request.
+- `GET /api/follow-requests` — pending requests to follow you, requires auth
+- `POST /api/follow-requests/{requester_id}/accept` / `/decline` — resolve a
+  pending request, requires auth (only the target of the request can call this)
 
 CORS is controlled by `CORS_ORIGINS` in `backend/.env` (comma-separated origins).
 
