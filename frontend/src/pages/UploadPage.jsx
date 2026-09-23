@@ -12,7 +12,6 @@ export default function UploadPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!gpxFile) return
     setSubmitting(true)
     setNetworkError(null)
     try {
@@ -67,14 +66,17 @@ export default function UploadPage() {
           onChange={(e) => setClaimedDistanceKm(e.target.value)}
         />
 
-        <label htmlFor="gpx_file">GPX file</label>
+        <label htmlFor="gpx_file">GPX file (optional)</label>
         <input
           type="file"
           id="gpx_file"
           accept=".gpx"
-          required
-          onChange={(e) => setGpxFile(e.target.files[0])}
+          onChange={(e) => setGpxFile(e.target.files[0] || null)}
         />
+        <p className="hint">
+          No file? Your time is still recorded, but marked unverified and kept
+          off the public leaderboard by default.
+        </p>
 
         <button type="submit" disabled={submitting}>
           {submitting ? 'Scoring…' : 'Score this run'}
@@ -86,13 +88,13 @@ export default function UploadPage() {
           <span className={`tier-pill tier-${result.tier}`}>
             {result.tier === 'green' && 'Verified — high trust'}
             {result.tier === 'yellow' && 'Device-synced — needs review'}
-            {result.tier === 'red' && 'Flagged — manual review required'}
+            {result.tier === 'red' && (result.file_hash ? 'Flagged — manual review required' : 'Unverified — no GPX provided')}
           </span>
           <div className="split-readout">{formatDuration(result.duration_s)}</div>
           <div className="stat-row">
             <div className="stat">
               <div className="num">{result.distance_km != null ? result.distance_km.toFixed(2) : '--'} km</div>
-              <div className="label">GPS distance</div>
+              <div className="label">{result.file_hash ? 'GPS distance' : 'Claimed distance'}</div>
             </div>
             <div className="stat">
               <div className="num">{formatPace(result.pace_sec_per_km)}</div>

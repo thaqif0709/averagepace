@@ -72,6 +72,11 @@ Score maps to a tier: green (85+, high trust), yellow (50-84, needs review),
 red (<50, flagged). Only green/yellow are meant to be shown publicly by default;
 tune this once you have real submissions to calibrate against.
 
+The GPX file itself is optional. Skip it and the run is still recorded (name +
+claimed distance only) but gets tier `red` / score 0 with no automated checks
+run at all — same as any other flagged entry, so it's excluded whenever the
+leaderboard is filtered to verified-only.
+
 ## Known limitations (read before treating this as production-ready)
 
 - **No auth.** Anyone can submit as any name. You'll want accounts + device-linked

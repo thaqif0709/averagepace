@@ -20,7 +20,7 @@ def init_db():
                     runner_name TEXT NOT NULL,
                     distance_bucket TEXT NOT NULL,
                     distance_km REAL NOT NULL,
-                    duration_s REAL NOT NULL,
+                    duration_s REAL,
                     pace_sec_per_km REAL,
                     trust_score INTEGER NOT NULL,
                     tier TEXT NOT NULL,
@@ -29,6 +29,9 @@ def init_db():
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
+            # Relax a constraint from before unverified (no-GPX) submissions existed -
+            # a no-op on a fresh table, needed for databases created by an earlier version.
+            cur.execute("ALTER TABLE runs ALTER COLUMN duration_s DROP NOT NULL")
         conn.commit()
     finally:
         conn.close()

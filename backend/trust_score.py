@@ -37,6 +37,20 @@ def bucket_for_distance(km):
         return "marathon"
 
 
+def unverified_result(claimed_distance_km):
+    """Shape of an analyze_gpx_bytes() result, for a submission with no GPX at all."""
+    return {
+        "score": 0,
+        "tier": "red",
+        "flags": ["No GPX file provided — submission could not be verified."],
+        "file_hash": None,
+        "duration_s": None,
+        "distance_km": claimed_distance_km,
+        "pace_sec_per_km": None,
+        "distance_bucket": bucket_for_distance(claimed_distance_km),
+    }
+
+
 def analyze_gpx_bytes(gpx_bytes, claimed_distance_km=None):
     """Same logic as the CLI prototype, but takes raw bytes (from an upload)."""
     gpx = gpxpy.parse(gpx_bytes.decode("utf-8"))

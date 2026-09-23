@@ -4,7 +4,7 @@ export async function submitRun({ runnerName, claimedDistanceKm, gpxFile }) {
   const form = new FormData()
   form.append('runner_name', runnerName)
   form.append('claimed_distance_km', claimedDistanceKm)
-  form.append('gpx_file', gpxFile)
+  if (gpxFile) form.append('gpx_file', gpxFile)
 
   const res = await fetch(`${API_URL}/api/upload`, { method: 'POST', body: form })
   if (!res.ok) throw new Error(`Upload failed (${res.status})`)

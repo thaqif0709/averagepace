@@ -8,7 +8,7 @@ from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import get_leaderboard, init_db, insert_run
-from trust_score import analyze_gpx_bytes
+from trust_score import analyze_gpx_bytes, unverified_result
 
 app = FastAPI(title="Averagepace API")
 
@@ -34,19 +34,23 @@ def health():
 async def upload(
     runner_name: str = Form(...),
     claimed_distance_km: float = Form(...),
-    gpx_file: UploadFile = File(...),
+    gpx_file: UploadFile | None = File(None),
 ):
-    gpx_bytes = await gpx_file.read()
-    result = analyze_gpx_bytes(gpx_bytes, claimed_distance_km=claimed_distance_km)
+    has_gpx = gpx_file is not None and gpx_file.filename
+    if has_gpx:
+        gpx_bytes = await gpx_file.read()
+        result = analyze_gpx_bytes(gpx_bytes, claimed_distance_km=claimed_distance_km)
+    else:
+        result = unverified_result(claimed_distance_km)
 
     saved = False
     error = None
-    if result["score"] > 0 and result.get("duration_s"):
+    if not has_gpx or (result["score"] > 0 and result.get("duration_s")):
         saved, error = insert_run(
             runner_name=runner_name,
             distance_bucket=result["distance_bucket"],
             distance_km=result["distance_km"],
-            duration_s=result["duration_s"],
+            duration_s=result.get("duration_s"),
             pace_sec_per_km=result.get("pace_sec_per_km"),
             trust_score=result["score"],
             tier=result["tier"],
