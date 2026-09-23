@@ -45,8 +45,8 @@ export default function LeaderboardPage() {
       <h1>{distanceLabel} leaderboard</h1>
       <p className="lede">
         Green means an automated GPS check passed. Yellow means it's backed by
-        an official result link — click ↗ to check it yourself. Red is a bare,
-        unverified claim.
+        an official result link — click through to check it yourself. Red is
+        a bare, unverified claim.
       </p>
 
       <div className="filters">
@@ -100,22 +100,24 @@ export default function LeaderboardPage() {
                 </td>
                 <td data-label="Pace">{formatPace(row.pace_sec_per_km)}</td>
                 <td data-label="Trust">
-                  <span className={`tier-dot ${row.tier}`}></span>
-                  {row.tier} · {row.trust_score}
-                  {row.result_url && (
-                    <a
-                      href={row.result_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="post-result-link"
-                      title="View official result"
-                    >
-                      ↗
-                    </a>
-                  )}
-                  {row.vouch_count > 0 && (
-                    <span className="vouch-count-readonly"> · {row.vouch_count} vouched</span>
-                  )}
+                  <span className="trust-cell-value">
+                    <span className={`tier-dot ${row.tier}`}></span>
+                    {row.tier} · {row.trust_score}
+                    {row.result_url && (
+                      <a
+                        href={row.result_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="post-result-link"
+                        title="View official result"
+                      >
+                        ↗
+                      </a>
+                    )}
+                    {row.vouch_count > 0 && (
+                      <span className="vouch-count-readonly"> · {row.vouch_count} vouched</span>
+                    )}
+                  </span>
                 </td>
               </tr>
             ))}
