@@ -52,9 +52,10 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
 
 ## Current feature set (built + tested)
 
-- **Upload flow** (`/`) — name, claimed distance, GPX file upload (GPX is
-  optional; skipping it saves an unverified tier=red/score=0 entry instead
-  of running any checks — see `unverified_result()` in `trust_score.py`)
+- **Upload flow** (`/`) — name, claimed distance, plus either a manually
+  entered time (pace auto-computed) or a GPX file upload. GPX always wins if
+  both are given. No GPX means no automated checks - saved as an unverified
+  tier=red/score=0 entry instead (see `unverified_result()` in `trust_score.py`)
 - **Trust scoring** (`backend/trust_score.py`) — five automated checks per
   upload: GPS speed jumps, pace-floor plausibility, claimed-vs-GPS distance
   mismatch, elevation sanity, duplicate-file detection (SHA-256 hash)

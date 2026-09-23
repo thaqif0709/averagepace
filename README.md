@@ -48,7 +48,8 @@ Then open http://localhost:5173
 ## API
 
 - `GET /api/health` — liveness check
-- `POST /api/upload` — multipart form: `runner_name`, `claimed_distance_km`, `gpx_file`
+- `POST /api/upload` — multipart form: `runner_name`, `claimed_distance_km`, and either
+  `gpx_file` or `claimed_duration_s` (pace is computed from distance + duration)
 - `GET /api/leaderboard?distance=5k&tier=all` — JSON rows
 
 CORS is controlled by `CORS_ORIGINS` in `backend/.env` (comma-separated origins).
@@ -72,10 +73,11 @@ Score maps to a tier: green (85+, high trust), yellow (50-84, needs review),
 red (<50, flagged). Only green/yellow are meant to be shown publicly by default;
 tune this once you have real submissions to calibrate against.
 
-The GPX file itself is optional. Skip it and the run is still recorded (name +
-claimed distance only) but gets tier `red` / score 0 with no automated checks
-run at all — same as any other flagged entry, so it's excluded whenever the
-leaderboard is filtered to verified-only.
+The GPX file itself is optional — enter your distance and time manually instead
+(pace is calculated for you) and it's still recorded, but as tier `red` / score 0
+with no automated checks run at all. Same treatment as any other flagged entry,
+so it's excluded whenever the leaderboard is filtered to verified-only.
+Attaching a GPX always takes priority over a manually-entered time.
 
 ## Known limitations (read before treating this as production-ready)
 

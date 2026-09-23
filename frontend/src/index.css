@@ -135,6 +135,11 @@ input[type="text"], input[type="number"], select {
   font-family: var(--sans);
   font-size: 15px;
 }
+input:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
 input:focus-visible, select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;

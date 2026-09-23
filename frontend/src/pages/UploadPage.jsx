@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { submitRun } from '../api.js'
-import { formatDuration, formatPace } from '../format.js'
+import { formatDuration, formatPace, parseDuration } from '../format.js'
 
 export default function UploadPage() {
   const [runnerName, setRunnerName] = useState('')
   const [claimedDistanceKm, setClaimedDistanceKm] = useState('')
+  const [manualTime, setManualTime] = useState('')
   const [gpxFile, setGpxFile] = useState(null)
   const [response, setResponse] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -12,10 +13,20 @@ export default function UploadPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setSubmitting(true)
     setNetworkError(null)
+
+    let claimedDurationS = null
+    if (!gpxFile) {
+      claimedDurationS = parseDuration(manualTime)
+      if (claimedDurationS == null) {
+        setNetworkError('Enter your time as MM:SS or H:MM:SS (e.g. 25:00), or attach a GPX file instead.')
+        return
+      }
+    }
+
+    setSubmitting(true)
     try {
-      const data = await submitRun({ runnerName, claimedDistanceKm, gpxFile })
+      const data = await submitRun({ runnerName, claimedDistanceKm, claimedDurationS, gpxFile })
       setResponse(data)
     } catch (err) {
       setNetworkError(err.message)
@@ -66,7 +77,23 @@ export default function UploadPage() {
           onChange={(e) => setClaimedDistanceKm(e.target.value)}
         />
 
-        <label htmlFor="gpx_file">GPX file (optional)</label>
+        <label htmlFor="manual_time">Your time</label>
+        <input
+          type="text"
+          id="manual_time"
+          disabled={!!gpxFile}
+          required={!gpxFile}
+          placeholder="e.g. 25:00 or 1:32:15"
+          value={manualTime}
+          onChange={(e) => setManualTime(e.target.value)}
+        />
+        <p className="hint">
+          Pace is calculated automatically from distance and time. Attaching a
+          GPX file below gets you a verified score instead — this field is
+          ignored if you do.
+        </p>
+
+        <label htmlFor="gpx_file">Or upload a GPX file (optional)</label>
         <input
           type="file"
           id="gpx_file"
@@ -74,8 +101,8 @@ export default function UploadPage() {
           onChange={(e) => setGpxFile(e.target.files[0] || null)}
         />
         <p className="hint">
-          No file? Your time is still recorded, but marked unverified and kept
-          off the public leaderboard by default.
+          Verifies your time and distance automatically instead of trusting
+          what you typed above.
         </p>
 
         <button type="submit" disabled={submitting}>

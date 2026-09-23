@@ -34,6 +34,7 @@ def health():
 async def upload(
     runner_name: str = Form(...),
     claimed_distance_km: float = Form(...),
+    claimed_duration_s: float | None = Form(None),
     gpx_file: UploadFile | None = File(None),
 ):
     has_gpx = gpx_file is not None and gpx_file.filename
@@ -41,7 +42,9 @@ async def upload(
         gpx_bytes = await gpx_file.read()
         result = analyze_gpx_bytes(gpx_bytes, claimed_distance_km=claimed_distance_km)
     else:
-        result = unverified_result(claimed_distance_km)
+        if not claimed_duration_s:
+            raise HTTPException(status_code=400, detail="Provide either a GPX file or your time.")
+        result = unverified_result(claimed_distance_km, claimed_duration_s)
 
     saved = False
     error = None

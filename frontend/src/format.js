@@ -15,3 +15,18 @@ export function formatPace(secPerKm) {
   const s = total % 60
   return `${m}:${String(s).padStart(2, '0')}/km`
 }
+
+/** Parses "MM:SS" or "H:MM:SS" into seconds. Returns null if unparseable. */
+export function parseDuration(input) {
+  if (!input) return null
+  const parts = input.trim().split(':')
+  if (parts.length !== 2 && parts.length !== 3) return null
+  const nums = parts.map(Number)
+  if (nums.some((n) => !Number.isFinite(n) || n < 0)) return null
+  if (nums.length === 2) {
+    const [m, s] = nums
+    return m * 60 + s
+  }
+  const [h, m, s] = nums
+  return h * 3600 + m * 60 + s
+}
