@@ -30,6 +30,9 @@ uvicorn main:app --reload --port 8000
 ```
 
 Table creation happens automatically on startup (`init_db()` in `database.py`).
+`.env.example` includes placeholder `GOOGLE_CLIENT_ID`/`SESSION_SECRET` values —
+the app runs fine with the placeholders, but real Google sign-in needs a real
+Client ID (see `DEPLOY.md` for how to create one).
 
 ### 3. Frontend
 
@@ -42,15 +45,20 @@ npm run dev
 
 Then open http://localhost:5173
 
-- `/` — upload a GPX file, get a trust score, get added to the leaderboard
-- `/leaderboard?distance=5k&tier=all` — view rankings (distance: 5k, 10k, half, marathon; tier: all, green)
+- `/` — sign in with Google, upload a GPX file (or enter a time manually), get added to the leaderboard
+- `/leaderboard?distance=5k&tier=all` — view rankings, no sign-in needed (distance: 5k, 10k, half, marathon; tier: all, green)
+- `/profile` — your own submission history, including entries hidden from the public leaderboard
 
 ## API
 
 - `GET /api/health` — liveness check
-- `POST /api/upload` — multipart form: `runner_name`, `claimed_distance_km`, and either
-  `gpx_file` or `claimed_duration_s` (pace is computed from distance + duration)
-- `GET /api/leaderboard?distance=5k&tier=all` — JSON rows
+- `POST /api/auth/google` — body `{"credential": "<google id token>"}`, returns `{token, user}`
+- `GET /api/auth/me` — current user, given `Authorization: Bearer <token>`
+- `POST /api/upload` — requires `Authorization: Bearer <token>`; multipart form:
+  `claimed_distance_km`, and either `gpx_file` or `claimed_duration_s`
+  (pace is computed from distance + duration; name comes from your Google account)
+- `GET /api/profile/runs` — your own submissions (any tier), requires auth
+- `GET /api/leaderboard?distance=5k&tier=all` — JSON rows, public
 
 CORS is controlled by `CORS_ORIGINS` in `backend/.env` (comma-separated origins).
 
@@ -81,10 +89,7 @@ Attaching a GPX always takes priority over a manually-entered time.
 
 ## Known limitations (read before treating this as production-ready)
 
-- **No auth.** Anyone can submit as any name. You'll want accounts + device-linked
-  identity (e.g. "this GPX must come from an OAuth-connected Strava/Garmin account
-  belonging to this user") before this is trustworthy at any scale.
-- **No rate limiting.** Someone could script mass-submissions.
+- **No rate limiting.** A signed-in account could still script mass-submissions.
 - **Thresholds are estimates**, not validated against real-world GPX data. Before
   going public, run this against a batch of real watch exports (including your
   own training runs) to see how often legitimate runs get false-flagged as yellow/red.
@@ -95,5 +100,5 @@ Attaching a GPX always takes priority over a manually-entered time.
 
 1. Add Strava/Garmin OAuth so GPX doesn't need manual export (`stravalib` for Python)
 2. Deploy — see `DEPLOY.md` (Neon + Render + Vercel/Netlify, all free tier)
-3. Add user accounts so a leaderboard entry is tied to a persistent profile, not just a typed name
+3. Rate limiting per account
 4. Add a "flag this result" button for community moderation on borderline (yellow) entries

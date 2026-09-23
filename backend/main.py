@@ -4,10 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Form, HTTPException, UploadFile, File
+from fastapi import Body, Depends, FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import get_leaderboard, init_db, insert_run
+from auth import get_current_user, issue_session_token, verify_google_credential
+from database import get_leaderboard, get_runs_for_user, init_db, insert_run, upsert_user
 from trust_score import analyze_gpx_bytes, unverified_result
 
 app = FastAPI(title="Averagepace API")
@@ -30,13 +31,44 @@ def health():
     return {"status": "ok"}
 
 
+@app.post("/api/auth/google")
+def google_login(body: dict = Body(...)):
+    credential = body.get("credential")
+    if not credential:
+        raise HTTPException(status_code=400, detail="Missing credential")
+    try:
+        claims = verify_google_credential(credential)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google credential")
+
+    user = upsert_user(
+        google_sub=claims["sub"],
+        email=claims["email"],
+        name=claims.get("name") or claims["email"],
+        avatar_url=claims.get("picture"),
+    )
+    token = issue_session_token(user["id"])
+    return {"token": token, "user": user}
+
+
+@app.get("/api/auth/me")
+def auth_me(current_user: dict = Depends(get_current_user)):
+    return current_user
+
+
+@app.get("/api/profile/runs")
+def profile_runs(current_user: dict = Depends(get_current_user)):
+    return {"rows": get_runs_for_user(current_user["id"])}
+
+
 @app.post("/api/upload")
 async def upload(
-    runner_name: str = Form(...),
     claimed_distance_km: float = Form(...),
     claimed_duration_s: float | None = Form(None),
     gpx_file: UploadFile | None = File(None),
+    current_user: dict = Depends(get_current_user),
 ):
+    runner_name = current_user["name"]
     has_gpx = gpx_file is not None and gpx_file.filename
     if has_gpx:
         gpx_bytes = await gpx_file.read()
@@ -51,6 +83,7 @@ async def upload(
     if not has_gpx or (result["score"] > 0 and result.get("duration_s")):
         saved, error = insert_run(
             runner_name=runner_name,
+            user_id=current_user["id"],
             distance_bucket=result["distance_bucket"],
             distance_km=result["distance_km"],
             duration_s=result.get("duration_s"),

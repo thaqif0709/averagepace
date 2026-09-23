@@ -61,6 +61,32 @@ Back in Render, on the `averagepace-api` service → **Environment**:
 Done. Open the Vercel/Netlify URL — it should load and successfully submit
 runs / show the leaderboard via the Render API.
 
+## 5. Sign-in — Google OAuth Client
+
+Submitting a run requires signing in with Google. This needs one thing only
+you can create (it's tied to your own Google account):
+
+1. Go to https://console.cloud.google.com/ and create a project (or reuse one).
+2. **APIs & Services → OAuth consent screen** — set it up if you haven't
+   already (External user type, app name, your email). This is required
+   before Google lets you create credentials.
+3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+   → Application type: **Web application**.
+4. Under **Authorized JavaScript origins**, add:
+   - Your frontend URL from step 3 (e.g. `https://averagepace-xxxx.vercel.app`)
+   - `http://localhost:5173` (for local dev)
+   - Leave **Authorized redirect URIs** empty — this app uses Google's
+     button-based sign-in, which doesn't redirect through your server.
+5. Create it. Copy the **Client ID** (ends in `.apps.googleusercontent.com`).
+   There's no client secret to worry about — this flow only needs the ID.
+6. Set it in two places:
+   - Render → `averagepace-api` → Environment → `GOOGLE_CLIENT_ID`
+   - Vercel/Netlify → Environment variables → `VITE_GOOGLE_CLIENT_ID`
+     (frontend needs a redeploy to pick it up, same as `VITE_API_URL`)
+
+Until this is set, the app still works for browsing the leaderboard — the
+sign-in button just shows "Sign-in not configured" instead of rendering.
+
 ## Known limits of this free setup
 
 - Render's free web service sleeps after 15 min idle (cold start on wake).

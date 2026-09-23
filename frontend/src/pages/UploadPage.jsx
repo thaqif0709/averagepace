@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useAuth } from '../auth.jsx'
+import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { submitRun } from '../api.js'
 import { formatDuration, formatPace, parseDuration } from '../format.js'
 
 export default function UploadPage() {
-  const [runnerName, setRunnerName] = useState('')
+  const { user, token, loading } = useAuth()
   const [claimedDistanceKm, setClaimedDistanceKm] = useState('')
   const [manualTime, setManualTime] = useState('')
   const [gpxFile, setGpxFile] = useState(null)
@@ -26,7 +28,7 @@ export default function UploadPage() {
 
     setSubmitting(true)
     try {
-      const data = await submitRun({ runnerName, claimedDistanceKm, claimedDurationS, gpxFile })
+      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile })
       setResponse(data)
     } catch (err) {
       setNetworkError(err.message)
@@ -47,68 +49,71 @@ export default function UploadPage() {
         every other runner who's submitted an honest file.
       </p>
 
-      {networkError && <div className="banner err">{networkError}</div>}
-      {!networkError && response?.error && <div className="banner err">{response.error}</div>}
-      {!networkError && response?.saved && (
-        <div className="banner ok">
-          Recorded — {response.runner_name}'s {response.distance_label} is on the board.
+      {loading && null}
+
+      {!loading && !user && (
+        <div className="result-card">
+          <p style={{ marginTop: 0 }}>Sign in with Google to submit a run — this ties it to your profile.</p>
+          <GoogleSignInButton />
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="runner_name">Your name</label>
-        <input
-          type="text"
-          id="runner_name"
-          required
-          placeholder="e.g. John Doe"
-          value={runnerName}
-          onChange={(e) => setRunnerName(e.target.value)}
-        />
+      {!loading && user && (
+        <>
+          {networkError && <div className="banner err">{networkError}</div>}
+          {!networkError && response?.error && <div className="banner err">{response.error}</div>}
+          {!networkError && response?.saved && (
+            <div className="banner ok">
+              Recorded — {response.runner_name}'s {response.distance_label} is on the board.
+            </div>
+          )}
 
-        <label htmlFor="claimed_distance_km">Distance you ran (km)</label>
-        <input
-          type="number"
-          id="claimed_distance_km"
-          step="0.01"
-          required
-          placeholder="e.g. 5, 10, 21.1, 42.2"
-          value={claimedDistanceKm}
-          onChange={(e) => setClaimedDistanceKm(e.target.value)}
-        />
+          <form onSubmit={handleSubmit}>
+            <label htmlFor="claimed_distance_km">Distance you ran (km)</label>
+            <input
+              type="number"
+              id="claimed_distance_km"
+              step="0.01"
+              required
+              placeholder="e.g. 5, 10, 21.1, 42.2"
+              value={claimedDistanceKm}
+              onChange={(e) => setClaimedDistanceKm(e.target.value)}
+            />
 
-        <label htmlFor="manual_time">Your time</label>
-        <input
-          type="text"
-          id="manual_time"
-          disabled={!!gpxFile}
-          required={!gpxFile}
-          placeholder="e.g. 25:00 or 1:32:15"
-          value={manualTime}
-          onChange={(e) => setManualTime(e.target.value)}
-        />
-        <p className="hint">
-          Pace is calculated automatically from distance and time. Attaching a
-          GPX file below gets you a verified score instead — this field is
-          ignored if you do.
-        </p>
+            <label htmlFor="manual_time">Your time</label>
+            <input
+              type="text"
+              id="manual_time"
+              disabled={!!gpxFile}
+              required={!gpxFile}
+              placeholder="e.g. 25:00 or 1:32:15"
+              value={manualTime}
+              onChange={(e) => setManualTime(e.target.value)}
+            />
+            <p className="hint">
+              Pace is calculated automatically from distance and time. Attaching a
+              GPX file below gets you a verified score instead — this field is
+              ignored if you do.
+            </p>
 
-        <label htmlFor="gpx_file">Or upload a GPX file (optional)</label>
-        <input
-          type="file"
-          id="gpx_file"
-          accept=".gpx"
-          onChange={(e) => setGpxFile(e.target.files[0] || null)}
-        />
-        <p className="hint">
-          Verifies your time and distance automatically instead of trusting
-          what you typed above.
-        </p>
+            <label htmlFor="gpx_file">Or upload a GPX file (optional)</label>
+            <input
+              type="file"
+              id="gpx_file"
+              accept=".gpx"
+              onChange={(e) => setGpxFile(e.target.files[0] || null)}
+            />
+            <p className="hint">
+              Verifies your time and distance automatically instead of trusting
+              what you typed above.
+            </p>
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Scoring…' : 'Score this run'}
-        </button>
-      </form>
+            <button type="submit" disabled={submitting}>
+              {submitting ? 'Scoring…' : 'Score this run'}
+            </button>
+          </form>
+        </>
+      )}
 
       {result && (
         <div className={`result-card tier-${result.tier}`}>
