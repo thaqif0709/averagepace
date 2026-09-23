@@ -41,12 +41,13 @@ export default function UploadPage() {
   return (
     <div className="wrap">
       <p className="eyebrow">No subscription. No segments. Just your time.</p>
-      <h1>Log your run.<br />See where it ranks.</h1>
+      <h1>Log your official run.<br />See where it ranks.</h1>
       <p className="lede">
-        Enter your distance and time. Got an official race result? Paste the
-        link to it — we don't read it automatically, but it shows on your
-        entry so anyone can click through and check it, and it earns your
-        entry a trust bump on the leaderboard.
+        Start with the link to your official race result. We can't read the
+        page for you — a lot of race-timing sites actively block automated
+        access — so you'll type in what it shows, but the link travels with
+        your entry as a citation anyone can click through and check, and it's
+        what earns the trust bump over a bare claim.
       </p>
 
       {loading && null}
@@ -69,7 +70,21 @@ export default function UploadPage() {
           )}
 
           <form onSubmit={handleSubmit}>
-            <label htmlFor="claimed_distance_km">Distance you ran (km)</label>
+            <label htmlFor="result_url">Link to your official result (optional, but recommended)</label>
+            <input
+              type="url"
+              id="result_url"
+              placeholder="https://results.example.com/..."
+              value={resultUrl}
+              onChange={(e) => setResultUrl(e.target.value)}
+            />
+            <p className="hint">
+              Open it yourself, then type what it shows below. We don't fetch
+              it on our end, but it's saved as a citation on your entry that
+              anyone — including other runners — can click through and check.
+            </p>
+
+            <label htmlFor="claimed_distance_km">Distance (km) — from the result, or your own claim</label>
             <input
               type="number"
               id="claimed_distance_km"
@@ -80,7 +95,7 @@ export default function UploadPage() {
               onChange={(e) => setClaimedDistanceKm(e.target.value)}
             />
 
-            <label htmlFor="manual_time">Your time</label>
+            <label htmlFor="manual_time">Time — from the result, or your own claim</label>
             <input
               type="text"
               inputMode="numeric"
@@ -93,20 +108,6 @@ export default function UploadPage() {
             <p className="hint">
               Just type the digits, right to left — seconds, then minutes, then
               hours. Pace is calculated automatically from distance and time.
-            </p>
-
-            <label htmlFor="result_url">Official result link (optional)</label>
-            <input
-              type="url"
-              id="result_url"
-              placeholder="https://results.example.com/..."
-              value={resultUrl}
-              onChange={(e) => setResultUrl(e.target.value)}
-            />
-            <p className="hint">
-              Link to your official race-timing result page. We don't read it
-              automatically, but anyone (including other runners) can click
-              through and check it — and it bumps your trust tier.
             </p>
 
             <label htmlFor="caption">Add a note (optional)</label>
