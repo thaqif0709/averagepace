@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
-import { updatePost, vouchForRun, unvouchForRun } from '../api.js'
+import { updatePost, deleteRun, vouchForRun, unvouchForRun } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
@@ -17,12 +17,17 @@ function timeAgo(iso) {
   return `${days}d`
 }
 
-export default function PostCard({ post, onUpdated }) {
+export default function PostCard({ post, onUpdated, onDeleted }) {
   const { user, token } = useAuth()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(post.body || '')
+  const [editEventName, setEditEventName] = useState(post.event_name || '')
+  const [editTimeType, setEditTimeType] = useState(post.time_type || '')
+  const [editResultUrl, setEditResultUrl] = useState(post.result_url || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [vouched, setVouched] = useState(post.vouched_by_me || false)
   const [vouchCount, setVouchCount] = useState(post.vouch_count || 0)
   const [vouching, setVouching] = useState(false)
@@ -31,7 +36,11 @@ export default function PostCard({ post, onUpdated }) {
 
   function startEdit() {
     setDraft(post.body || '')
+    setEditEventName(post.event_name || '')
+    setEditTimeType(post.time_type || '')
+    setEditResultUrl(post.result_url || '')
     setError(null)
+    setConfirmingDelete(false)
     setEditing(true)
   }
 
@@ -39,13 +48,28 @@ export default function PostCard({ post, onUpdated }) {
     setSaving(true)
     setError(null)
     try {
-      const updated = await updatePost(token, post.id, draft.trim())
+      const runMetadata = post.run_id
+        ? { eventName: editEventName.trim(), timeType: editTimeType, resultUrl: editResultUrl.trim() }
+        : null
+      const updated = await updatePost(token, post.id, draft.trim(), runMetadata)
       setEditing(false)
       onUpdated?.(updated)
     } catch (err) {
       setError(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteRun(token, post.run_id)
+      onDeleted?.(post.id)
+    } catch (err) {
+      setError(err.message)
+      setDeleting(false)
     }
   }
 
@@ -98,7 +122,53 @@ export default function PostCard({ post, onUpdated }) {
               onChange={(e) => setDraft(e.target.value)}
               autoFocus
             />
+
+            {post.run_id && (
+              <div className="post-edit-run-fields">
+                <label htmlFor={`event_name_${post.id}`}>Event name</label>
+                <input
+                  type="text"
+                  id={`event_name_${post.id}`}
+                  maxLength={200}
+                  value={editEventName}
+                  onChange={(e) => setEditEventName(e.target.value)}
+                />
+
+                <label>Which time is this?</label>
+                <div className="segmented">
+                  <button
+                    type="button"
+                    className={editTimeType === 'gun' ? 'active' : ''}
+                    onClick={() => setEditTimeType('gun')}
+                  >
+                    Gun time
+                  </button>
+                  <button
+                    type="button"
+                    className={editTimeType === 'chip' ? 'active' : ''}
+                    onClick={() => setEditTimeType('chip')}
+                  >
+                    Chip time
+                  </button>
+                </div>
+
+                <label htmlFor={`result_url_${post.id}`}>Official result link</label>
+                <input
+                  type="url"
+                  id={`result_url_${post.id}`}
+                  placeholder="https://results.example.com/..."
+                  value={editResultUrl}
+                  onChange={(e) => setEditResultUrl(e.target.value)}
+                />
+                <p className="hint">
+                  Distance and time can't be edited here — delete this entry
+                  and resubmit if those are wrong.
+                </p>
+              </div>
+            )}
+
             {error && <p className="post-edit-error">{error}</p>}
+
             <div className="post-edit-actions">
               <button type="button" onClick={handleSave} disabled={saving || (!draft.trim() && !post.run_id)}>
                 {saving ? 'Saving…' : 'Save'}
@@ -106,7 +176,39 @@ export default function PostCard({ post, onUpdated }) {
               <button type="button" className="ghost" onClick={() => setEditing(false)} disabled={saving}>
                 Cancel
               </button>
+              {post.run_id && !confirmingDelete && (
+                <button
+                  type="button"
+                  className="ghost danger"
+                  onClick={() => setConfirmingDelete(true)}
+                  disabled={saving}
+                >
+                  Delete entry
+                </button>
+              )}
             </div>
+
+            {confirmingDelete && (
+              <div className="post-delete-confirm">
+                <p>
+                  Delete this entry for good? This can't be undone
+                  {vouchCount > 0 && ` and will remove its ${vouchCount} vouch${vouchCount === 1 ? '' : 'es'}`}.
+                </p>
+                <div className="post-edit-actions">
+                  <button type="button" className="danger" onClick={handleDelete} disabled={deleting}>
+                    {deleting ? 'Deleting…' : 'Yes, delete it'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           post.body && <p className="post-text">{post.body}</p>

@@ -77,15 +77,30 @@ export async function createTextPost(token, body) {
   return res.json()
 }
 
-export async function updatePost(token, postId, body) {
+export async function updatePost(token, postId, body, runMetadata) {
+  const payload = runMetadata
+    ? { body, event_name: runMetadata.eventName, time_type: runMetadata.timeType, result_url: runMetadata.resultUrl }
+    : { body }
   const res = await fetch(`${API_URL}/api/posts/${postId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => null)
     throw new Error(data?.detail || 'Failed to save post')
+  }
+  return res.json()
+}
+
+export async function deleteRun(token, runId) {
+  const res = await fetch(`${API_URL}/api/runs/${runId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.detail || 'Failed to delete')
   }
   return res.json()
 }

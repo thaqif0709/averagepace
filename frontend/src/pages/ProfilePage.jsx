@@ -149,6 +149,20 @@ export default function ProfilePage() {
     setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
   }
 
+  function handlePostDeleted(postId) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+    // Deleting a run can change (or clear) that distance's best effort, so
+    // refresh the summary too rather than leaving a stale, now-gone PR shown.
+    fetchBestEfforts(userId, token)
+      .then((data) => {
+        const sorted = [...data.best_efforts].sort(
+          (a, b) => DISTANCE_ORDER.indexOf(a.distance_bucket) - DISTANCE_ORDER.indexOf(b.distance_bucket)
+        )
+        setBestEfforts(sorted)
+      })
+      .catch(() => {})
+  }
+
   if (loading || authLoading) return null
   if (error) {
     return (
@@ -293,7 +307,7 @@ export default function ProfilePage() {
       {!postsGated && posts.length > 0 && (
         <div className="feed">
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} onUpdated={handlePostUpdated} />
+            <PostCard key={post.id} post={post} onUpdated={handlePostUpdated} onDeleted={handlePostDeleted} />
           ))}
         </div>
       )}

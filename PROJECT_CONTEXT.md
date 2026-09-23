@@ -77,7 +77,15 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   Post owners can edit the text later (`PATCH /api/posts/{id}`, sets
   `edited_at`, shown in the UI as "· edited" - the DB's own
   `body IS NOT NULL OR run_id IS NOT NULL` CHECK constraint is what blocks
-  emptying a text-only post, caught in `update_post()`).
+  emptying a text-only post, caught in `update_post()`). The same PATCH also
+  accepts `event_name`/`time_type`/`result_url` when the post has a run
+  attached (`update_run_metadata()`), so those stay fixable after the fact -
+  distance and duration deliberately don't, since vouches and leaderboard
+  rank are earned against those exact numbers. Fixing a wrong distance/time
+  means deleting the run (`DELETE /api/runs/{id}`, owner-only, cascades to
+  its post and any vouches via FK) and resubmitting - the PostCard edit UI
+  surfaces this as a "Delete entry" option with an inline confirm step,
+  which warns about vouch loss when the run has any.
   - **Home feed** (`/`) — "Following" and "Everyone" tabs (URL-driven via
     `?scope=`), a composer for text posts when signed in. "Everyone" only
     ever shows posts from public accounts.

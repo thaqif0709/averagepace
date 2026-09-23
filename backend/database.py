@@ -413,6 +413,43 @@ def update_post(post_id, user_id, body):
         conn.close()
 
 
+def update_run_metadata(run_id, user_id, event_name, time_type, result_url):
+    """Edits a run's event name / time type / result link - never distance or
+    duration, which stay fixed once vouches or leaderboard rank attach to
+    them (fixing those means deleting and resubmitting). Only the owner's
+    row matches."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                UPDATE runs SET event_name = %s, time_type = %s, result_url = %s
+                WHERE id = %s AND user_id = %s
+                RETURNING id, event_name, time_type, result_url
+            """, (event_name, time_type, result_url, run_id, user_id))
+            updated = cur.fetchone()
+        conn.commit()
+        return updated
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+
+def delete_run(run_id, user_id):
+    """Deletes a run - cascades to its post and any vouches. Only the
+    owner's row matches. Returns True if a row was actually deleted."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM runs WHERE id = %s AND user_id = %s", (run_id, user_id))
+            deleted = cur.rowcount > 0
+        conn.commit()
+        return deleted
+    finally:
+        conn.close()
+
+
 def get_feed(scope, user_id=None, viewer_id=None, limit=50):
     conn = get_conn()
     try:

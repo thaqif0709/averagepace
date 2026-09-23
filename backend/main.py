@@ -14,6 +14,7 @@ from database import (
     can_view_private_content,
     create_post,
     decline_follow_request,
+    delete_run,
     follow_user,
     get_best_efforts,
     get_feed,
@@ -34,6 +35,7 @@ from database import (
     unfollow_user,
     unvouch_for_run,
     update_post,
+    update_run_metadata,
     upsert_user,
     vouch_for_run,
 )
@@ -52,6 +54,29 @@ app.add_middleware(
 DISTANCE_LABELS = {"5k": "5K", "10k": "10K", "half": "Half Marathon", "marathon": "Marathon"}
 
 init_db()
+
+
+def clean_run_metadata(event_name, time_type, result_url):
+    """Shared validation for the three run fields that stay editable after
+    submission (unlike distance/duration). Raises HTTPException on bad input,
+    else returns (event_name, time_type, result_url) cleaned/normalized."""
+    clean_event_name = (event_name or "").strip() or None
+    if clean_event_name and len(clean_event_name) > 200:
+        raise HTTPException(status_code=400, detail="Event name is too long (max 200 characters)")
+
+    clean_time_type = (time_type or "").strip().lower() or None
+    if clean_time_type and clean_time_type not in ("gun", "chip"):
+        raise HTTPException(status_code=400, detail="Time type must be 'gun' or 'chip'")
+
+    clean_result_url = (result_url or "").strip() or None
+    if clean_result_url:
+        if len(clean_result_url) > 2000:
+            raise HTTPException(status_code=400, detail="Result link is too long")
+        parsed = urlparse(clean_result_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise HTTPException(status_code=400, detail="Result link must be a valid http:// or https:// URL")
+
+    return clean_event_name, clean_time_type, clean_result_url
 
 
 @app.get("/api/health")
@@ -111,7 +136,25 @@ def edit_post(post_id: int, body: dict = Body(...), current_user: dict = Depends
         raise HTTPException(status_code=400, detail="Post can't be empty")
     if not updated:
         raise HTTPException(status_code=404, detail="Post not found")
+
+    if updated["run_id"]:
+        event_name, time_type, result_url = clean_run_metadata(
+            body.get("event_name"), body.get("time_type"), body.get("result_url")
+        )
+        run = update_run_metadata(updated["run_id"], current_user["id"], event_name, time_type, result_url)
+        if run:
+            updated["event_name"] = run["event_name"]
+            updated["time_type"] = run["time_type"]
+            updated["result_url"] = run["result_url"]
+
     return updated
+
+
+@app.delete("/api/runs/{run_id}")
+def remove_run(run_id: int, current_user: dict = Depends(get_current_user)):
+    if not delete_run(run_id, current_user["id"]):
+        raise HTTPException(status_code=404, detail="Run not found")
+    return {"deleted": True}
 
 
 @app.get("/api/feed")
@@ -280,21 +323,7 @@ async def upload(
     runner_name = current_user["name"]
     has_gpx = gpx_file is not None and gpx_file.filename
 
-    clean_result_url = (result_url or "").strip() or None
-    if clean_result_url:
-        if len(clean_result_url) > 2000:
-            raise HTTPException(status_code=400, detail="Result link is too long")
-        parsed = urlparse(clean_result_url)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            raise HTTPException(status_code=400, detail="Result link must be a valid http:// or https:// URL")
-
-    clean_time_type = (time_type or "").strip().lower() or None
-    if clean_time_type and clean_time_type not in ("gun", "chip"):
-        raise HTTPException(status_code=400, detail="Time type must be 'gun' or 'chip'")
-
-    clean_event_name = (event_name or "").strip() or None
-    if clean_event_name and len(clean_event_name) > 200:
-        raise HTTPException(status_code=400, detail="Event name is too long (max 200 characters)")
+    clean_event_name, clean_time_type, clean_result_url = clean_run_metadata(event_name, time_type, result_url)
 
     if has_gpx:
         gpx_bytes = await gpx_file.read()
