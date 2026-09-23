@@ -105,6 +105,18 @@ export async function deleteRun(token, runId) {
   return res.json()
 }
 
+export async function deletePost(token, postId) {
+  const res = await fetch(`${API_URL}/api/posts/${postId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.detail || 'Failed to delete')
+  }
+  return res.json()
+}
+
 export async function updateRunMetadata(token, runId, { eventName, timeType, resultUrl }) {
   const res = await fetch(`${API_URL}/api/runs/${runId}`, {
     method: 'PATCH',

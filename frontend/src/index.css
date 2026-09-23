@@ -756,21 +756,54 @@ tbody tr:nth-child(1) .rank {
 .like-button.liked:hover:not(:disabled) { background: rgba(102,2,60,0.16); color: var(--accent); filter: none; }
 .like-count-readonly { color: var(--ink-dim); font-size: 13px; }
 
-.post-edit-btn {
-  margin-left: auto;
+.post-menu { position: relative; margin-left: auto; }
+.post-menu-btn {
   margin-top: 0;
   width: auto;
   padding: 2px 8px;
   background: none;
   border: none;
   box-shadow: none;
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 18px;
+  line-height: 1;
   color: var(--ink-dim);
   cursor: pointer;
 }
-.post-edit-btn:hover, .post-edit-btn:focus-visible { color: var(--accent); filter: none; }
+.post-menu-btn:hover, .post-menu-btn:focus-visible { color: var(--accent); filter: none; }
+.post-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 120px;
+  background: var(--surface);
+  border: 1px solid rgba(42,40,35,0.12);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.post-menu-dropdown button {
+  width: 100%;
+  margin-top: 0;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.post-menu-dropdown button:hover, .post-menu-dropdown button:focus-visible {
+  background: var(--surface-2);
+  filter: none;
+}
+.post-menu-dropdown button.danger { color: var(--red); }
 
 .post-edit textarea { font-size: 15px; }
 .post-edit-actions {
@@ -812,8 +845,6 @@ tbody tr:nth-child(1) .rank {
 .post-edit-run-fields input { font-size: 14px; padding: 10px 14px; }
 .post-edit-run-fields .segmented { margin-bottom: 4px; }
 .post-edit-run-fields .hint { font-size: 12px; }
-
-.run-row-edit-btn { margin-left: 8px; }
 
 .post-delete-confirm {
   margin-top: 14px;

@@ -83,10 +83,14 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   distance and duration deliberately don't, since vouches and leaderboard
   rank are earned against those exact numbers. Fixing a wrong distance/time
   means deleting the run (`DELETE /api/runs/{id}`, owner-only, cascades to
-  its post and any vouches via FK) and resubmitting - the PostCard edit UI
-  surfaces this as a "Delete entry" option with an inline confirm step,
-  which warns about vouch loss when the run has any. The same edit/delete
-  is also available per-row on the Best Efforts drill-down
+  its post and any vouches via FK) and resubmitting. A text-only post (no
+  run attached) can be deleted too, via a separate `DELETE /api/posts/{id}`
+  guarded to `run_id IS NULL` so it can never be used to bypass the run
+  path's cascade. Both edit and delete sit behind a kebab (⋮) menu on the
+  post - opens a small dropdown with "Edit"/"Delete"; picking "Edit" opens
+  the existing inline form (which itself still has a "Delete" option once
+  inside), while picking "Delete" jumps straight to that form's confirm
+  step. The same menu is available per-row on the Best Efforts drill-down
   (`BestEffortDetailPage.jsx`'s `RunRow`), via a dedicated
   `PATCH /api/runs/{id}` (metadata-only, no caption in play there - reuses
   `update_run_metadata()`/`clean_run_metadata()` directly rather than going

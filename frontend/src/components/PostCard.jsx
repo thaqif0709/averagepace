@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
-import { updatePost, deleteRun, vouchForRun, unvouchForRun, likePost, unlikePost } from '../api.js'
+import { updatePost, deleteRun, deletePost, vouchForRun, unvouchForRun, likePost, unlikePost } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
@@ -34,8 +34,21 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
   const [liked, setLiked] = useState(post.liked_by_me || false)
   const [likeCount, setLikeCount] = useState(post.like_count || 0)
   const [liking, setLiking] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
 
   const isOwn = user && user.id === post.user_id
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
 
   function startEdit() {
     setDraft(post.body || '')
@@ -45,6 +58,18 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
     setError(null)
     setConfirmingDelete(false)
     setEditing(true)
+    setMenuOpen(false)
+  }
+
+  function startDelete() {
+    setDraft(post.body || '')
+    setEditEventName(post.event_name || '')
+    setEditTimeType(post.time_type || '')
+    setEditResultUrl(post.result_url || '')
+    setError(null)
+    setEditing(true)
+    setConfirmingDelete(true)
+    setMenuOpen(false)
   }
 
   async function handleSave() {
@@ -68,7 +93,11 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
     setDeleting(true)
     setError(null)
     try {
-      await deleteRun(token, post.run_id)
+      if (post.run_id) {
+        await deleteRun(token, post.run_id)
+      } else {
+        await deletePost(token, post.id)
+      }
       onDeleted?.(post.id)
     } catch (err) {
       setError(err.message)
@@ -127,9 +156,27 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
             {post.edited_at && ' · edited'}
           </span>
           {isOwn && !editing && (
-            <button type="button" className="post-edit-btn" onClick={startEdit}>
-              Edit
-            </button>
+            <div className="post-menu" ref={menuRef}>
+              <button
+                type="button"
+                className="post-menu-btn"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-label="Post options"
+                aria-expanded={menuOpen}
+              >
+                ⋮
+              </button>
+              {menuOpen && (
+                <div className="post-menu-dropdown">
+                  <button type="button" onClick={startEdit}>
+                    Edit
+                  </button>
+                  <button type="button" className="danger" onClick={startDelete}>
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -195,14 +242,14 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
               <button type="button" className="ghost" onClick={() => setEditing(false)} disabled={saving}>
                 Cancel
               </button>
-              {post.run_id && !confirmingDelete && (
+              {!confirmingDelete && (
                 <button
                   type="button"
                   className="ghost danger"
                   onClick={() => setConfirmingDelete(true)}
                   disabled={saving}
                 >
-                  Delete entry
+                  Delete
                 </button>
               )}
             </div>

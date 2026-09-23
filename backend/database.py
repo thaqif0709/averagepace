@@ -468,6 +468,25 @@ def delete_run(run_id, user_id):
         conn.close()
 
 
+def delete_post(post_id, user_id):
+    """Deletes a text-only post. A run-attached post is deleted via
+    delete_run instead (which cascades to the post) - the run_id IS NULL
+    guard here just means this never touches one by mistake. Only the
+    owner's row matches. Returns True if a row was actually deleted."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM posts WHERE id = %s AND user_id = %s AND run_id IS NULL",
+                (post_id, user_id),
+            )
+            deleted = cur.rowcount > 0
+        conn.commit()
+        return deleted
+    finally:
+        conn.close()
+
+
 def get_feed(scope, user_id=None, viewer_id=None, limit=50):
     conn = get_conn()
     try:

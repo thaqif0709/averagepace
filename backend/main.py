@@ -14,6 +14,7 @@ from database import (
     can_view_private_content,
     create_post,
     decline_follow_request,
+    delete_post,
     delete_run,
     follow_user,
     get_best_efforts,
@@ -151,6 +152,15 @@ def edit_post(post_id: int, body: dict = Body(...), current_user: dict = Depends
             updated["result_url"] = run["result_url"]
 
     return updated
+
+
+@app.delete("/api/posts/{post_id}")
+def remove_post(post_id: int, current_user: dict = Depends(get_current_user)):
+    """Only for text-only posts - a run-attached post is deleted via
+    DELETE /api/runs/{id} instead, which cascades to the post automatically."""
+    if not delete_post(post_id, current_user["id"]):
+        raise HTTPException(status_code=404, detail="Post not found")
+    return {"deleted": True}
 
 
 @app.post("/api/posts/{post_id}/like")

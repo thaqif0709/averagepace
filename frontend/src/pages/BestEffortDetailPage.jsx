@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import { fetchUserRunsByDistance, updateRunMetadata, deleteRun } from '../api.js'
@@ -15,6 +15,19 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
   const [error, setError] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
 
   function startEdit() {
     setEventName(run.event_name || '')
@@ -23,6 +36,17 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
     setError(null)
     setConfirmingDelete(false)
     setEditing(true)
+    setMenuOpen(false)
+  }
+
+  function startDelete() {
+    setEventName(run.event_name || '')
+    setTimeType(run.time_type || '')
+    setResultUrl(run.result_url || '')
+    setError(null)
+    setEditing(true)
+    setConfirmingDelete(true)
+    setMenuOpen(false)
   }
 
   async function handleSave() {
@@ -114,7 +138,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
                   onClick={() => setConfirmingDelete(true)}
                   disabled={saving}
                 >
-                  Delete entry
+                  Delete
                 </button>
               )}
             </div>
@@ -151,6 +175,29 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
       <td className="runner-cell" data-label="Rank">
         <span className="rank">{rank}</span>
         <span>{new Date(run.created_at).toLocaleDateString()}</span>
+        {isOwn && (
+          <div className="post-menu" ref={menuRef}>
+            <button
+              type="button"
+              className="post-menu-btn"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Entry options"
+              aria-expanded={menuOpen}
+            >
+              ⋮
+            </button>
+            {menuOpen && (
+              <div className="post-menu-dropdown">
+                <button type="button" onClick={startEdit}>
+                  Edit
+                </button>
+                <button type="button" className="danger" onClick={startDelete}>
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </td>
       <td data-label="Event">{run.event_name || '—'}</td>
       <td className="time-cell" data-label="Time">
@@ -159,27 +206,24 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
       </td>
       <td data-label="Pace">{formatPace(run.pace_sec_per_km)}</td>
       <td data-label="Trust">
-        <span className={`tier-dot ${run.tier}`}></span>
-        {run.tier} · {run.trust_score}
-        {run.result_url && (
-          <a
-            href={run.result_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="post-result-link"
-            title="View official result"
-          >
-            ↗
-          </a>
-        )}
-        {run.vouch_count > 0 && (
-          <span className="vouch-count-readonly"> · {run.vouch_count} vouched</span>
-        )}
-        {isOwn && (
-          <button type="button" className="post-edit-btn run-row-edit-btn" onClick={startEdit}>
-            Edit
-          </button>
-        )}
+        <span className="trust-cell-value">
+          <span className={`tier-dot ${run.tier}`}></span>
+          {run.tier} · {run.trust_score}
+          {run.result_url && (
+            <a
+              href={run.result_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="post-result-link"
+              title="View official result"
+            >
+              ↗
+            </a>
+          )}
+          {run.vouch_count > 0 && (
+            <span className="vouch-count-readonly"> · {run.vouch_count} vouched</span>
+          )}
+        </span>
       </td>
     </tr>
   )
