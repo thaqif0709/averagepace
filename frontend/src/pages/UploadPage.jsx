@@ -103,9 +103,9 @@ export default function UploadPage() {
               onChange={(e) => setResultUrl(e.target.value)}
             />
             <p className="hint">
-              Open it yourself, then type what it shows below. We don't fetch
-              it on our end, but it's saved as a citation on your entry that
-              anyone — including other runners — can click through and check.
+              Open it yourself, then type what it shows below. It's saved as
+              a citation on your entry, so anyone — including other runners
+              — can click through and check it.
             </p>
 
             <label htmlFor="event_name">Event name (optional)</label>
