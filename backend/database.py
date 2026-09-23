@@ -111,6 +111,17 @@ def init_db():
             # no-op if already there. No separate events table yet; names are
             # normalized only by the suggest-as-you-type autocomplete.
             cur.execute("ALTER TABLE runs ADD COLUMN IF NOT EXISTS event_name TEXT")
+            # Plain engagement, unlike vouches - applies to any post (not just
+            # run-attached ones) and isn't a trust signal, so it doesn't feed
+            # into anything scoring-related.
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS likes (
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (user_id, post_id)
+                )
+            """)
         conn.commit()
     finally:
         conn.close()
@@ -364,13 +375,20 @@ POST_SELECT = """
         COALESCE(v.vouch_count, 0) AS vouch_count,
         EXISTS (
             SELECT 1 FROM vouches WHERE run_id = r.id AND user_id = %s
-        ) AS vouched_by_me
+        ) AS vouched_by_me,
+        COALESCE(l.like_count, 0) AS like_count,
+        EXISTS (
+            SELECT 1 FROM likes WHERE post_id = p.id AND user_id = %s
+        ) AS liked_by_me
     FROM posts p
     JOIN users u ON u.id = p.user_id
     LEFT JOIN runs r ON r.id = p.run_id
     LEFT JOIN (
         SELECT run_id, COUNT(*) AS vouch_count FROM vouches GROUP BY run_id
     ) v ON v.run_id = r.id
+    LEFT JOIN (
+        SELECT post_id, COUNT(*) AS like_count FROM likes GROUP BY post_id
+    ) l ON l.post_id = p.id
 """
 
 
@@ -463,13 +481,13 @@ def get_feed(scope, user_id=None, viewer_id=None, limit=50):
                        )
                     ORDER BY p.created_at DESC
                     LIMIT %s
-                """, (viewer_id, user_id, user_id, limit))
+                """, (viewer_id, viewer_id, user_id, user_id, limit))
             else:
                 # Everyone means everyone public - a private account's posts only
                 # ever show up in the feeds of people it has accepted as followers.
                 cur.execute(
                     POST_SELECT + " WHERE u.is_private = FALSE ORDER BY p.created_at DESC LIMIT %s",
-                    (viewer_id, limit),
+                    (viewer_id, viewer_id, limit),
                 )
             return cur.fetchall()
     finally:
@@ -482,7 +500,7 @@ def get_posts_for_user(user_id, viewer_id=None, limit=100):
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 POST_SELECT + " WHERE p.user_id = %s ORDER BY p.created_at DESC LIMIT %s",
-                (viewer_id, user_id, limit),
+                (viewer_id, viewer_id, user_id, limit),
             )
             return cur.fetchall()
     finally:
@@ -636,6 +654,51 @@ def get_vouch_count(run_id):
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM vouches WHERE run_id = %s", (run_id,))
+            return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
+def like_post(user_id, post_id):
+    """Adds a like (or leaves alone, if one already exists). Applies to any
+    post, not just run-attached ones - unlike vouches this isn't a trust
+    signal, just plain engagement.
+    Returns (ok, error): error is 'not_found' if the post doesn't exist,
+    'self' if it's the caller's own post, else None."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+            row = cur.fetchone()
+            if row is None:
+                return False, "not_found"
+            if row[0] == user_id:
+                return False, "self"
+            cur.execute("""
+                INSERT INTO likes (user_id, post_id) VALUES (%s, %s)
+                ON CONFLICT (user_id, post_id) DO NOTHING
+            """, (user_id, post_id))
+        conn.commit()
+        return True, None
+    finally:
+        conn.close()
+
+
+def unlike_post(user_id, post_id):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM likes WHERE user_id = %s AND post_id = %s", (user_id, post_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_like_count(post_id):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM likes WHERE post_id = %s", (post_id,))
             return cur.fetchone()[0]
     finally:
         conn.close()

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
-import { updatePost, deleteRun, vouchForRun, unvouchForRun } from '../api.js'
+import { updatePost, deleteRun, vouchForRun, unvouchForRun, likePost, unlikePost } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
@@ -31,6 +31,9 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
   const [vouched, setVouched] = useState(post.vouched_by_me || false)
   const [vouchCount, setVouchCount] = useState(post.vouch_count || 0)
   const [vouching, setVouching] = useState(false)
+  const [liked, setLiked] = useState(post.liked_by_me || false)
+  const [likeCount, setLikeCount] = useState(post.like_count || 0)
+  const [liking, setLiking] = useState(false)
 
   const isOwn = user && user.id === post.user_id
 
@@ -86,6 +89,22 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
       // low-stakes toggle - leave state as-is, the button just didn't change
     } finally {
       setVouching(false)
+    }
+  }
+
+  async function toggleLike() {
+    if (liking) return
+    setLiking(true)
+    try {
+      const data = liked
+        ? await unlikePost(post.id, token)
+        : await likePost(post.id, token)
+      setLiked(data.liked)
+      setLikeCount(data.like_count)
+    } catch {
+      // low-stakes toggle - leave state as-is, the button just didn't change
+    } finally {
+      setLiking(false)
     }
   }
 
@@ -247,6 +266,25 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
             </span>
           </div>
         )}
+
+        <div className="post-engagement">
+          {user && !isOwn ? (
+            <button
+              type="button"
+              className={`like-button ${liked ? 'liked' : ''}`}
+              onClick={toggleLike}
+              disabled={liking}
+            >
+              {liked ? 'Liked' : 'Like'}{likeCount > 0 && ` · ${likeCount}`}
+            </button>
+          ) : (
+            likeCount > 0 && (
+              <span className="like-count-readonly">
+                {likeCount} like{likeCount === 1 ? '' : 's'}
+              </span>
+            )
+          )}
+        </div>
       </div>
     </article>
   )

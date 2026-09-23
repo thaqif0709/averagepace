@@ -237,3 +237,24 @@ export async function unvouchForRun(runId, token) {
   if (!res.ok) throw new Error('Failed to unvouch')
   return res.json()
 }
+
+export async function likePost(postId, token) {
+  const res = await fetch(`${API_URL}/api/posts/${postId}/like`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to like')
+  }
+  return res.json()
+}
+
+export async function unlikePost(postId, token) {
+  const res = await fetch(`${API_URL}/api/posts/${postId}/like`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) throw new Error('Failed to unlike')
+  return res.json()
+}

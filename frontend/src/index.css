@@ -735,6 +735,26 @@ tbody tr:nth-child(1) .rank {
 .vouch-button.vouched:hover:not(:disabled) { background: rgba(102,2,60,0.16); color: var(--accent); filter: none; }
 .vouch-count-readonly { color: var(--ink-dim); font-size: 13px; }
 
+.post-engagement { margin-top: 10px; }
+.like-button {
+  width: auto;
+  margin-top: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-dim);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid rgba(42,40,35,0.16);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--fast) var(--ease), color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.like-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); filter: none; }
+.like-button.liked { background: rgba(102,2,60,0.1); color: var(--accent); border-color: transparent; }
+.like-button.liked:hover:not(:disabled) { background: rgba(102,2,60,0.16); color: var(--accent); filter: none; }
+.like-count-readonly { color: var(--ink-dim); font-size: 13px; }
+
 .post-edit-btn {
   margin-left: auto;
   margin-top: 0;

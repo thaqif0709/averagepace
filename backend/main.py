@@ -23,6 +23,7 @@ from database import (
     get_followers,
     get_following,
     get_leaderboard,
+    get_like_count,
     get_pending_follow_requests,
     get_posts_for_user,
     get_user_public,
@@ -30,9 +31,11 @@ from database import (
     get_vouch_count,
     init_db,
     insert_run,
+    like_post,
     set_user_privacy,
     suggest_event_names,
     unfollow_user,
+    unlike_post,
     unvouch_for_run,
     update_post,
     update_run_metadata,
@@ -148,6 +151,22 @@ def edit_post(post_id: int, body: dict = Body(...), current_user: dict = Depends
             updated["result_url"] = run["result_url"]
 
     return updated
+
+
+@app.post("/api/posts/{post_id}/like")
+def like(post_id: int, current_user: dict = Depends(get_current_user)):
+    ok, error = like_post(current_user["id"], post_id)
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Post not found")
+    if error == "self":
+        raise HTTPException(status_code=400, detail="Can't like your own post")
+    return {"liked": True, "like_count": get_like_count(post_id)}
+
+
+@app.delete("/api/posts/{post_id}/like")
+def unlike(post_id: int, current_user: dict = Depends(get_current_user)):
+    unlike_post(current_user["id"], post_id)
+    return {"liked": False, "like_count": get_like_count(post_id)}
 
 
 @app.patch("/api/runs/{run_id}")

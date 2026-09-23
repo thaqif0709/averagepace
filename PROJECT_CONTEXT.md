@@ -161,6 +161,16 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   profile (`PostCard.jsx`) for other viewers, a plain "N vouched" readout for
   the runner's own view and logged-out visitors, and a read-only count on the
   leaderboard.
+- **Likes** (`likes` table, `user_id`+`post_id` primary key) — plain
+  engagement, architecturally separate from vouches: applies to *any* post
+  (text-only or run-attached) and carries no trust/scoring meaning at all,
+  vs. vouches which only exist on runs and are specifically a trust signal.
+  Same toggle mechanism as vouches (`POST`/`DELETE /api/posts/{id}/like`,
+  `ON CONFLICT DO NOTHING` for idempotent add), same self-restriction as a UX
+  convention rather than an integrity rule. Shown as a "Like"/"Liked · N"
+  pill (`PostCard.jsx`, own `.like-button` CSS mirroring `.vouch-button`) for
+  other signed-in viewers, a plain "N like(s)" readout for the poster's own
+  view and logged-out visitors.
 - **Best efforts** (`GET /api/users/{id}/best-efforts`) — each runner's
   fastest submission per distance bucket, one row via
   `ROW_NUMBER() OVER (PARTITION BY distance_bucket ORDER BY duration_s ASC)`
@@ -232,8 +242,8 @@ These were flagged as important before showing this to real users:
    was already stored as free text) but aren't "claimed" by any profile.
    Fine at this scale; would need a decision if this ever had real users
    before auth existed.
-8. **No notifications** — following someone or having someone comment/like
-   (likes don't exist yet either) triggers nothing. Feed/profile are
+8. **No notifications** — following someone, or having someone vouch for,
+   like, or comment on your post, triggers nothing. Feed/profile are
    pull-only; you find out by checking.
 9. **Feed and profile posts have no pagination** — `get_feed()` and
    `get_posts_for_user()` in `database.py` return a fixed `LIMIT` (50/100)
