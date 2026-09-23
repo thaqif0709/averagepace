@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth.jsx'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { submitRun } from '../api.js'
-import { formatDuration, formatPace, parseDuration } from '../format.js'
+import { autoFormatDurationInput, formatDuration, formatPace, parseDuration } from '../format.js'
 
 export default function UploadPage() {
   const { user, token, loading } = useAuth()
@@ -83,17 +83,19 @@ export default function UploadPage() {
             <label htmlFor="manual_time">Your time</label>
             <input
               type="text"
+              inputMode="numeric"
               id="manual_time"
               disabled={!!gpxFile}
               required={!gpxFile}
-              placeholder="e.g. 25:00 or 1:32:15"
+              placeholder="e.g. 2548 → 25:48"
               value={manualTime}
-              onChange={(e) => setManualTime(e.target.value)}
+              onChange={(e) => setManualTime(autoFormatDurationInput(e.target.value))}
             />
             <p className="hint">
-              Pace is calculated automatically from distance and time. Attaching a
-              GPX file below gets you a verified score instead — this field is
-              ignored if you do.
+              Just type the digits, right to left — seconds, then minutes, then
+              hours. Pace is calculated automatically from distance and time.
+              Attaching a GPX file below gets you a verified score instead —
+              this field is ignored if you do.
             </p>
 
             <label htmlFor="gpx_file">Or upload a GPX file (optional)</label>
