@@ -1,7 +1,7 @@
 /*
   Averagepace design tokens
   ----------------------
-  Color: warm off-white background, white surfaces, teal accent, a
+  Color: warm off-white background, white surfaces, Tyrian purple accent, a
          green/amber/red traffic-light triad for trust tiers (amber uses
          dark text on a tinted chip instead of colored text - true yellows
          can't hit good text contrast on their own).
@@ -26,7 +26,7 @@
   --ink: #2A2823;
   --ink-dim: #6E6858;
   --muted: #6E6858;
-  --accent: #12786C;
+  --accent: #66023C;
   --green: #296E46;
   --amber: #A8790A;
   --red: #A83A2C;
@@ -331,7 +331,7 @@ input:disabled {
 input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(18,120,108,0.15);
+  box-shadow: 0 0 0 3px rgba(102,2,60,0.15);
 }
 
 input[type="file"] {
@@ -452,6 +452,43 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shado
 .filters a.active { background: var(--accent); color: #FFFFFF; border-color: var(--accent); font-weight: 700; }
 .filters a:hover:not(.active) { border-color: var(--ink-dim); }
 
+.segmented {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.segmented button {
+  width: auto;
+  margin-top: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-dim);
+  padding: 9px 16px;
+  border: 1px solid rgba(42,40,35,0.16);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--fast) var(--ease), color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.segmented button.active { background: var(--accent); color: #FFFFFF; border-color: var(--accent); font-weight: 700; }
+.segmented button:hover:not(.active) { border-color: var(--ink-dim); filter: none; }
+
+.time-type-tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 /* --- leaderboard table (card layout on narrow screens, see media query) --- */
 table {
   width: 100%;
@@ -492,7 +529,7 @@ tbody tr:nth-child(1) .rank {
   height: 24px;
   min-width: 24px;
   border-radius: 50%;
-  background: rgba(18,120,108,0.12);
+  background: rgba(102,2,60,0.12);
   color: var(--accent);
 }
 .time-cell {
@@ -795,7 +832,7 @@ tbody tr:nth-child(1) .rank {
     text-align: left;
   }
   .mobile-menu .link-button { color: var(--ink-dim); }
-  .mobile-menu a.active { color: var(--accent); background: rgba(18,120,108,0.08); }
+  .mobile-menu a.active { color: var(--accent); background: rgba(102,2,60,0.08); }
   .mobile-menu a:hover, .mobile-menu .link-button:hover { background: var(--surface-2); }
   .mobile-menu .nav-google-btn, .mobile-menu .nav-google-btn--disabled {
     margin: 6px 16px 10px;

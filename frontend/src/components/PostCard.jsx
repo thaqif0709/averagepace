@@ -97,7 +97,10 @@ export default function PostCard({ post, onUpdated }) {
           <div className="post-activity">
             <span className={`tier-dot ${post.tier}`}></span>
             <span className="post-activity-item">{DISTANCE_LABELS[post.distance_bucket] ?? post.distance_bucket}</span>
-            <span className="post-activity-item time-cell">{formatDuration(post.duration_s)}</span>
+            <span className="post-activity-item time-cell">
+              {formatDuration(post.duration_s)}
+              {post.time_type && <span className="time-type-tag">{post.time_type}</span>}
+            </span>
             <span className="post-activity-item">{formatPace(post.pace_sec_per_km)}</span>
             {post.result_url && (
               <a href={post.result_url} target="_blank" rel="noopener noreferrer" className="post-result-link">

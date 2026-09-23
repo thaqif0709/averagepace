@@ -104,14 +104,22 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     nothing stops the same person from immediately requesting again.
 - **Upload flow** (`/submit`) — claimed distance plus a manually entered time
   (auto-formatted as you type, e.g. `2548` → `25:48`; pace auto-computed),
-  an optional link to an official race result, and an optional caption.
-  Runner name comes from the authenticated Google account. A successful
-  submission also creates a feed post linking the run, with the caption as
-  its body. GPX upload is **not exposed in this UI** as of the pivot away
-  from device-file verification toward logging official races (see below) -
-  the `gpx_file` form field, `analyze_gpx_bytes()`, and the whole green/yellow
-  GPX-analysis path are all still there in `backend/`, untouched, reachable
-  directly via the API. Bringing the picker back is a pure frontend change.
+  an optional link to an official race result, an optional gun/chip time tag,
+  and an optional caption. Runner name comes from the authenticated Google
+  account. A successful submission also creates a feed post linking the run,
+  with the caption as its body. GPX upload is **not exposed in this UI** as of
+  the pivot away from device-file verification toward logging official races
+  (see below) - the `gpx_file` form field, `analyze_gpx_bytes()`, and the
+  whole green/yellow GPX-analysis path are all still there in `backend/`,
+  untouched, reachable directly via the API. Bringing the picker back is a
+  pure frontend change.
+- **Gun time / chip time** (`time_type` on `runs`, nullable, `'gun'` or
+  `'chip'`) — purely an informational tag, not fed into trust scoring. Race
+  clocks report gun time (from the start signal) and chip time (net, from
+  crossing the start mat) differently, so tagging which one was entered lets
+  anyone checking the linked result know which figure to compare against.
+  Shown as a small pill next to the time everywhere a run appears (feed,
+  profile, leaderboard, the post-submit result card).
 - **Trust scoring** (`backend/trust_score.py`) — three paths to a tier:
   1. GPX file (API-only right now) → automated: five checks (GPS speed
      jumps, pace-floor plausibility, claimed-vs-GPS distance mismatch,
@@ -135,7 +143,8 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
   in the URL (shareable links); excludes runs by currently-private users
 - **Storage** — PostgreSQL (was SQLite pre-restructure)
-- **Design system** — light, welcoming palette (cream/charcoal/teal accent),
+- **Design system** — light, welcoming palette (cream/charcoal/Tyrian purple
+  accent),
   WCAG AA contrast-checked; re-themed from an earlier dark/orange version.
   Type: Inter (body), Inter Tight (headings only, tighter optical sizing for
   large text), Space Mono (all numerals/times, the signature element) - fluid

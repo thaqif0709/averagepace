@@ -216,6 +216,7 @@ async def upload(
     claimed_distance_km: float = Form(...),
     claimed_duration_s: float | None = Form(None),
     result_url: str | None = Form(None),
+    time_type: str | None = Form(None),
     caption: str | None = Form(None),
     gpx_file: UploadFile | None = File(None),
     current_user: dict = Depends(get_current_user),
@@ -231,6 +232,10 @@ async def upload(
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             raise HTTPException(status_code=400, detail="Result link must be a valid http:// or https:// URL")
 
+    clean_time_type = (time_type or "").strip().lower() or None
+    if clean_time_type and clean_time_type not in ("gun", "chip"):
+        raise HTTPException(status_code=400, detail="Time type must be 'gun' or 'chip'")
+
     if has_gpx:
         gpx_bytes = await gpx_file.read()
         result = analyze_gpx_bytes(gpx_bytes, claimed_distance_km=claimed_distance_km)
@@ -241,6 +246,8 @@ async def upload(
             result = linked_result(claimed_distance_km, claimed_duration_s, clean_result_url)
         else:
             result = unverified_result(claimed_distance_km, claimed_duration_s)
+
+    result["time_type"] = clean_time_type
 
     saved = False
     error = None
@@ -257,6 +264,7 @@ async def upload(
             flags="; ".join(result["flags"]),
             gpx_hash=result["file_hash"],
             result_url=result.get("result_url"),
+            time_type=clean_time_type,
         )
         if saved:
             create_post(user_id=current_user["id"], body=(caption or "").strip() or None, run_id=run_id)

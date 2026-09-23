@@ -94,7 +94,10 @@ export default function LeaderboardPage() {
                   <span className="rank">{i + 1}</span>
                   <span>{row.runner_name}</span>
                 </td>
-                <td className="time-cell" data-label="Time">{formatDuration(row.duration_s)}</td>
+                <td className="time-cell" data-label="Time">
+                  {formatDuration(row.duration_s)}
+                  {row.time_type && <span className="time-type-tag">{row.time_type}</span>}
+                </td>
                 <td data-label="Pace">{formatPace(row.pace_sec_per_km)}</td>
                 <td data-label="Trust">
                   <span className={`tier-dot ${row.tier}`}></span>

@@ -9,6 +9,7 @@ export default function UploadPage() {
   const [claimedDistanceKm, setClaimedDistanceKm] = useState('')
   const [manualTime, setManualTime] = useState('')
   const [resultUrl, setResultUrl] = useState('')
+  const [timeType, setTimeType] = useState('')
   const [caption, setCaption] = useState('')
   const [response, setResponse] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -26,7 +27,7 @@ export default function UploadPage() {
 
     setSubmitting(true)
     try {
-      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, resultUrl, caption })
+      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, resultUrl, timeType, caption })
       setResponse(data)
       setCaption('')
     } catch (err) {
@@ -117,6 +118,29 @@ export default function UploadPage() {
               automatically from distance and time.
             </p>
 
+            <label>Which time is this? (optional)</label>
+            <div className="segmented">
+              <button
+                type="button"
+                className={timeType === 'gun' ? 'active' : ''}
+                onClick={() => setTimeType(timeType === 'gun' ? '' : 'gun')}
+              >
+                Gun time
+              </button>
+              <button
+                type="button"
+                className={timeType === 'chip' ? 'active' : ''}
+                onClick={() => setTimeType(timeType === 'chip' ? '' : 'chip')}
+              >
+                Chip time
+              </button>
+            </div>
+            <p className="hint">
+              Chip time starts when you cross the start line; gun time starts
+              when the race gun fires. Tagging it means anyone comparing your
+              entry to the result link knows which clock they're checking.
+            </p>
+
             <label htmlFor="caption">Add a note (optional)</label>
             <textarea
               id="caption"
@@ -141,7 +165,10 @@ export default function UploadPage() {
             {result.tier === 'yellow' && (result.file_hash ? 'Device-synced — needs review' : 'Official result linked')}
             {result.tier === 'red' && (result.file_hash ? 'Flagged — manual review required' : 'Unverified — no official link provided')}
           </span>
-          <div className="split-readout">{formatDuration(result.duration_s)}</div>
+          <div className="split-readout">
+            {formatDuration(result.duration_s)}
+            {result.time_type && <span className="time-type-tag">{result.time_type} time</span>}
+          </div>
           <div className="stat-row">
             <div className="stat">
               <div className="num">{result.distance_km != null ? result.distance_km.toFixed(2) : '--'} km</div>
