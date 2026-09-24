@@ -69,7 +69,20 @@ export default function UploadPage() {
     }
   }
 
+  function handleReset() {
+    setResponse(null)
+    setNetworkError(null)
+    setClaimedDistanceKm('')
+    setManualTime('')
+    setResultUrl('')
+    setTimeType('gun')
+    setEventName('')
+    setEventDate('')
+    setCaption('')
+  }
+
   const result = response?.result
+  const showResult = Boolean(response?.saved && result)
 
   return (
     <div className="wrap wide">
@@ -91,15 +104,10 @@ export default function UploadPage() {
         </div>
       )}
 
-      {!loading && user && (
+      {!loading && user && !showResult && (
         <>
           {networkError && <div className="banner err">{networkError}</div>}
           {!networkError && response?.error && <div className="banner err">{response.error}</div>}
-          {!networkError && response?.saved && (
-            <div className="banner ok">
-              Recorded — {response.runner_name}'s {response.distance_label} is on the board.
-            </div>
-          )}
 
           <form onSubmit={handleSubmit}>
             <label htmlFor="result_url">Link to your official result (optional, but recommended)</label>
@@ -169,6 +177,15 @@ export default function UploadPage() {
             <div className="form-row">
               <div className="form-field">
                 <label htmlFor="claimed_distance_km">Distance (km)</label>
+                <input
+                  type="number"
+                  id="claimed_distance_km"
+                  step="0.01"
+                  required
+                  placeholder="e.g. 5, 10, 21.1, 42.2"
+                  value={claimedDistanceKm}
+                  onChange={(e) => setClaimedDistanceKm(e.target.value)}
+                />
                 <div className="segmented distance-presets">
                   {DISTANCE_PRESETS.map(([km, label]) => (
                     <button
@@ -181,15 +198,6 @@ export default function UploadPage() {
                     </button>
                   ))}
                 </div>
-                <input
-                  type="number"
-                  id="claimed_distance_km"
-                  step="0.01"
-                  required
-                  placeholder="e.g. 5, 10, 21.1, 42.2"
-                  value={claimedDistanceKm}
-                  onChange={(e) => setClaimedDistanceKm(e.target.value)}
-                />
               </div>
               <div className="form-field">
                 <label htmlFor="manual_time">Time</label>
@@ -250,7 +258,7 @@ export default function UploadPage() {
         </>
       )}
 
-      {result && (
+      {showResult && (
         <div className={`result-card tier-${result.tier}`}>
           <span className={`tier-pill tier-${result.tier}`}>
             {result.tier === 'green' && 'Verified — high trust'}
@@ -300,6 +308,9 @@ export default function UploadPage() {
               </ul>
             </div>
           )}
+          <button type="button" onClick={handleReset}>
+            Submit another run
+          </button>
         </div>
       )}
     </div>
