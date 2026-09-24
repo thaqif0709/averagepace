@@ -1,33 +1,26 @@
+import { useEffect, useRef } from 'react'
+import lottie from 'lottie-web/build/player/lottie_light'
+import timerAnimation from '../assets/timer-loader.json'
+
 export default function RunningLoader({ label = 'Loading…' }) {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const anim = lottie.loadAnimation({
+      container: containerRef.current,
+      renderer: 'svg',
+      loop: true,
+      autoplay: !reduceMotion,
+      animationData: timerAnimation,
+    })
+    if (reduceMotion) anim.goToAndStop(0, true)
+    return () => anim.destroy()
+  }, [])
+
   return (
     <div className="running-loader" role="status" aria-live="polite">
-      <svg
-        className="running-loader-figure"
-        viewBox="0 0 64 64"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <g className="runner-bob">
-          <circle cx="36" cy="10" r="6" />
-          <line x1="34" y1="16" x2="28" y2="36" />
-          <g className="runner-arm-back">
-            <line x1="33" y1="18" x2="24" y2="26" />
-          </g>
-          <g className="runner-arm-front">
-            <line x1="33" y1="18" x2="44" y2="12" />
-          </g>
-          <g className="runner-leg-back">
-            <polyline points="28,36 20,46 24,56" />
-          </g>
-          <g className="runner-leg-front">
-            <polyline points="28,36 36,44 32,54" />
-          </g>
-        </g>
-      </svg>
+      <div ref={containerRef} className="running-loader-figure" aria-hidden="true" />
       {label && <p className="running-loader-label">{label}</p>}
     </div>
   )

@@ -628,30 +628,6 @@ tbody tr:nth-child(1) .rank {
   color: var(--ink-dim);
   margin: 0;
 }
-.runner-bob { animation: runner-bob 0.3s ease-in-out infinite; transform-origin: 32px 32px; }
-.runner-arm-front, .runner-leg-back { animation: runner-swing-a 0.6s ease-in-out infinite; }
-.runner-arm-back, .runner-leg-front { animation: runner-swing-b 0.6s ease-in-out infinite; }
-.runner-arm-front, .runner-arm-back { transform-origin: 33px 18px; }
-.runner-leg-front, .runner-leg-back { transform-origin: 28px 36px; }
-
-@keyframes runner-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-@keyframes runner-swing-a {
-  0%, 100% { transform: rotate(28deg); }
-  50% { transform: rotate(-28deg); }
-}
-@keyframes runner-swing-b {
-  0%, 100% { transform: rotate(-28deg); }
-  50% { transform: rotate(28deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .runner-bob, .runner-arm-front, .runner-arm-back, .runner-leg-front, .runner-leg-back {
-    animation: none;
-  }
-}
 
 /* --- composer + feed (home page, profile posts) --- */
 .composer {

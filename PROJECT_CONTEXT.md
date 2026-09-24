@@ -231,13 +231,19 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   leaderboard table becomes labeled cards below 600px instead of hiding a
   column (`data-label` attributes in `LeaderboardPage.jsx`, CSS-only card
   layout). Documented at the top of `frontend/src/index.css`.
-- **Loading state** (`RunningLoader.jsx`) — a small stroke-art running figure
-  (mid-stride pose, CSS-animated limb swing + bob, `prefers-reduced-motion`
-  turns it off) shown wherever a page currently renders nothing while its
-  data loads: the feed, a profile, the leaderboard, the Best Efforts
-  drill-down, and follower/following lists. Plain SVG rather than an emoji
-  character, for the same reason the result-link icon is - no font-fallback
-  rendering surprises across platforms.
+- **Loading state** (`RunningLoader.jsx`) — a small stopwatch Lottie
+  animation (`src/assets/timer-loader.json`, recolored from its original
+  black to the `--accent` brand color) rendered via `lottie-web`'s light
+  build (`lottie-web/build/player/lottie_light`, no expressions parser,
+  smaller than the full build), shown wherever a page currently renders
+  nothing while its data loads: the feed, a profile, the leaderboard, the
+  Best Efforts drill-down, and follower/following lists. The JSON asset is
+  bundled locally (not fetched from a CDN at runtime) so the loading
+  indicator itself never depends on an external network call.
+  `prefers-reduced-motion` freezes it on the first frame via
+  `anim.goToAndStop(0, true)` instead of `autoplay`, checked in JS
+  (`window.matchMedia`) rather than CSS since the animation is driven by
+  the Lottie player, not CSS keyframes.
 
 ## Known gaps / not yet built
 
