@@ -122,14 +122,20 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
 - **Upload flow** (`/submit`) — claimed distance plus a manually entered time
   (auto-formatted as you type, e.g. `2548` → `25:48`; pace auto-computed),
   an optional link to an official race result, an optional gun/chip time tag,
-  and an optional caption. Runner name comes from the authenticated Google
-  account. A successful submission also creates a feed post linking the run,
-  with the caption as its body. GPX upload is **not exposed in this UI** as of
-  the pivot away from device-file verification toward logging official races
-  (see below) - the `gpx_file` form field, `analyze_gpx_bytes()`, and the
-  whole green/yellow GPX-analysis path are all still there in `backend/`,
-  untouched, reachable directly via the API. Bringing the picker back is a
-  pure frontend change.
+  and an optional caption. Distance has one-tap presets for the four
+  standard race lengths (5K/10K/Half/Marathon, filling in the exact
+  5/10/21.1/42.2 km rather than relying on the runner to know or type the
+  precise figure - the free-text input stays too, for anything non-standard)
+  - `bucket_for_distance()` in `trust_score.py` already tolerates some
+  imprecision (it buckets by range, not exact match), but the presets remove
+  the guesswork entirely rather than just relying on that tolerance. Runner
+  name comes from the authenticated Google account. A successful submission
+  also creates a feed post linking the run, with the caption as its body.
+  GPX upload is **not exposed in this UI** as of the pivot away from
+  device-file verification toward logging official races (see below) - the
+  `gpx_file` form field, `analyze_gpx_bytes()`, and the whole green/yellow
+  GPX-analysis path are all still there in `backend/`, untouched, reachable
+  directly via the API. Bringing the picker back is a pure frontend change.
 - **Gun time / chip time** (`time_type` on `runs`, nullable, `'gun'` or
   `'chip'`) — purely an informational tag, not fed into trust scoring. Race
   clocks report gun time (from the start signal) and chip time (net, from

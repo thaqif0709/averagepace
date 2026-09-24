@@ -5,6 +5,13 @@ import { submitRun, fetchEventSuggestions } from '../api.js'
 import { autoFormatDurationInput, formatDuration, formatEventDate, formatPace, parseDuration, todayLocalISO } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 
+const DISTANCE_PRESETS = [
+  ['5', '5K'],
+  ['10', '10K'],
+  ['21.1', 'Half'],
+  ['42.2', 'Marathon'],
+]
+
 export default function UploadPage() {
   const { user, token, loading } = useAuth()
   const [claimedDistanceKm, setClaimedDistanceKm] = useState('')
@@ -162,6 +169,18 @@ export default function UploadPage() {
             <div className="form-row">
               <div className="form-field">
                 <label htmlFor="claimed_distance_km">Distance (km)</label>
+                <div className="segmented distance-presets">
+                  {DISTANCE_PRESETS.map(([km, label]) => (
+                    <button
+                      key={km}
+                      type="button"
+                      className={claimedDistanceKm === km ? 'active' : ''}
+                      onClick={() => setClaimedDistanceKm(km)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="number"
                   id="claimed_distance_km"
