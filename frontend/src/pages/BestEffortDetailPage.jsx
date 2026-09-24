@@ -88,7 +88,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
   if (editing) {
     return (
       <tr>
-        <td colSpan={5}>
+        <td colSpan={6}>
           <div className="post-edit-run-fields">
             <label htmlFor={`run_event_${run.id}`}>Event name</label>
             <input
@@ -190,29 +190,6 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
       <td className="runner-cell" data-label="Rank">
         <span className="rank">{rank}</span>
         <span>{new Date(run.created_at).toLocaleDateString()}</span>
-        {isOwn && (
-          <div className="post-menu" ref={menuRef}>
-            <button
-              type="button"
-              className="post-menu-btn"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Entry options"
-              aria-expanded={menuOpen}
-            >
-              ⋮
-            </button>
-            {menuOpen && (
-              <div className="post-menu-dropdown">
-                <button type="button" onClick={startEdit}>
-                  Edit
-                </button>
-                <button type="button" className="danger" onClick={startDelete}>
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </td>
       <td data-label="Event">
         {run.event_name || run.event_date ? (
@@ -249,6 +226,31 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
             <span className="vouch-count-readonly"> · {run.vouch_count} vouched</span>
           )}
         </span>
+      </td>
+      <td className="run-actions-cell">
+        {isOwn && (
+          <div className="post-menu" ref={menuRef}>
+            <button
+              type="button"
+              className="post-menu-btn"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Entry options"
+              aria-expanded={menuOpen}
+            >
+              ⋮
+            </button>
+            {menuOpen && (
+              <div className="post-menu-dropdown">
+                <button type="button" onClick={startEdit}>
+                  Edit
+                </button>
+                <button type="button" className="danger" onClick={startDelete}>
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </td>
     </tr>
   )
@@ -321,6 +323,7 @@ export default function BestEffortDetailPage() {
               <th>Time</th>
               <th>Pace</th>
               <th>Trust</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
