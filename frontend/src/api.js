@@ -169,6 +169,13 @@ export async function fetchEventSuggestions(query) {
   return res.json()
 }
 
+export async function searchAll(query, type, token) {
+  const params = new URLSearchParams({ q: query, type })
+  const res = await fetch(`${API_URL}/api/search?${params}`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Search failed')
+  return res.json()
+}
+
 export async function fetchFollowers(userId, token) {
   const res = await fetch(`${API_URL}/api/users/${userId}/followers`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load followers')

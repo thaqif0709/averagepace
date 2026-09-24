@@ -10,6 +10,7 @@ import FollowListPage from './pages/FollowListPage.jsx'
 import BestEffortDetailPage from './pages/BestEffortDetailPage.jsx'
 import AdminReviewPage from './pages/AdminReviewPage.jsx'
 import ChooseUsernameDialog from './components/ChooseUsernameDialog.jsx'
+import SearchWidget from './components/SearchWidget.jsx'
 
 export default function App() {
   const { user, loading, logout } = useAuth()
@@ -44,32 +45,35 @@ export default function App() {
     <>
       <div className="topbar">
         <Link to="/" className="wordmark">average<span>pace</span></Link>
-        <nav className="nav">
-          <NavLink to="/" end>Home</NavLink>
-          <NavLink to="/submit">Submit a run</NavLink>
-          <NavLink to="/leaderboard">Leaderboard</NavLink>
-          {!loading && user && <NavLink to="/profile">Profile</NavLink>}
-          {!loading && user?.is_admin && <NavLink to="/admin">Admin</NavLink>}
-          {!loading && user && (
-            <button type="button" className="link-button" onClick={logout}>
-              Sign out
-            </button>
-          )}
-          {!loading && !user && <GoogleSignInButton />}
-        </nav>
-        <button
-          type="button"
-          className={`nav-toggle ${menuOpen ? 'open' : ''}`}
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={menuOpen}
-        >
-          <span className="nav-toggle-bars">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-        </button>
+        <div className="topbar-actions">
+          <SearchWidget />
+          <nav className="nav">
+            <NavLink to="/" end>Home</NavLink>
+            <NavLink to="/submit">Submit a run</NavLink>
+            <NavLink to="/leaderboard">Leaderboard</NavLink>
+            {!loading && user && <NavLink to="/profile">Profile</NavLink>}
+            {!loading && user?.is_admin && <NavLink to="/admin">Admin</NavLink>}
+            {!loading && user && (
+              <button type="button" className="link-button" onClick={logout}>
+                Sign out
+              </button>
+            )}
+            {!loading && !user && <GoogleSignInButton />}
+          </nav>
+          <button
+            type="button"
+            className={`nav-toggle ${menuOpen ? 'open' : ''}`}
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+          >
+            <span className="nav-toggle-bars">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+        </div>
 
         <div className={`mobile-menu ${menuOpen ? 'open' : ''}`}>
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>

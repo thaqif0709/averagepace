@@ -94,6 +94,25 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   Shown as `@username` under the display name on any profile, and next to
   the author name on every post (`PostCard.jsx`) once `POST_SELECT` started
   including it.
+- **Search** (`GET /api/search?q=&type=people|posts|runs` - one endpoint,
+  three unrelated queries behind a `type` switch, not merged results) - a
+  search icon in the topbar (`SearchWidget.jsx`, always visible, not tucked
+  behind the mobile hamburger since it's a primary action) opens a dropdown
+  with a text input, three filter pills, and live debounced (300ms, 2-char
+  minimum) results. People search matches name or username and returns
+  every matching account regardless of privacy - an account is findable by
+  name the way it is on Twitter/Instagram, only its *content* is gated, not
+  its existence. Posts and event-runs search reuse that same privacy rule
+  inline as a SQL condition (`u.is_private = FALSE OR <viewer owns it> OR
+  <viewer follows it, accepted>) rather than filtering in Python, so a
+  private account's own posts/runs are still findable by the account owner
+  or their accepted followers, unlike the general "Everyone" feed/queue
+  which - by design, elsewhere - shows *only* public accounts even to an
+  account's own followers. Clicking a result routes to the runner's/
+  author's profile - there's no post-permalink page, so a post result
+  doesn't jump to the post itself. Result rows share one `ResultRow`
+  component branching on `type`, since the three shapes need almost the same
+  avatar+title+subtitle layout.
 - **Social layer** — Twitter-style. Users follow each other
   (`follows` table); posts (`posts` table) are either free-text or linked to
   a run (`run_id`), so a scored submission and a text update share one feed.
@@ -422,6 +441,8 @@ frontend/
       GoogleSignInButton.jsx — wraps Google Identity Services' button
       PostCard.jsx            — one feed/profile post: author, timestamp, optional text,
                                  optional embedded run card
+      SearchWidget.jsx        — topbar search icon + dropdown (input, People/Posts/Events
+                                 filter pills, live debounced results)
     pages/
       HomePage.jsx           — `/`, the feed (Following/Everyone tabs + composer)
       UploadPage.jsx          — `/submit`, gated behind sign-in, distance/time + optional

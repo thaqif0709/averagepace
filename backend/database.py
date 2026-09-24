@@ -776,6 +776,82 @@ def suggest_event_names(query, limit=8):
         conn.close()
 
 
+def search_people(query, limit=20):
+    """Finds accounts by name or username - private accounts are findable
+    too (matching how Twitter/Instagram search works), only their content
+    is gated, not their existence."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            pattern = '%' + query.replace('%', r'\%').replace('_', r'\_') + '%'
+            cur.execute("""
+                SELECT id, name, avatar_url, is_private, username
+                FROM users
+                WHERE name ILIKE %s OR username ILIKE %s
+                ORDER BY name ASC
+                LIMIT %s
+            """, (pattern, pattern, limit))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def search_posts(query, viewer_id=None, limit=20):
+    """Searches post text - a private account's posts only surface for the
+    viewer if it's their own account or they're an accepted follower, same
+    rule as everywhere else private content is gated."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            pattern = '%' + query.replace('%', r'\%').replace('_', r'\_') + '%'
+            cur.execute(POST_SELECT + """
+                WHERE p.body ILIKE %s
+                  AND (
+                    u.is_private = FALSE
+                    OR p.user_id = %s
+                    OR EXISTS (
+                        SELECT 1 FROM follows
+                        WHERE follower_id = %s AND followed_id = p.user_id AND status = 'accepted'
+                    )
+                  )
+                ORDER BY p.created_at DESC
+                LIMIT %s
+            """, (viewer_id, viewer_id, pattern, viewer_id, viewer_id, limit))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def search_runs_by_event(query, viewer_id=None, limit=20):
+    """Searches runs by event name - same private-content rule as search_posts."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            pattern = '%' + query.replace('%', r'\%').replace('_', r'\_') + '%'
+            cur.execute("""
+                SELECT runs.*, COALESCE(v.vouch_count, 0) AS vouch_count
+                FROM runs
+                LEFT JOIN users ON users.id = runs.user_id
+                LEFT JOIN (
+                    SELECT run_id, COUNT(*) AS vouch_count FROM vouches GROUP BY run_id
+                ) v ON v.run_id = runs.id
+                WHERE runs.event_name ILIKE %s
+                  AND (
+                    (users.is_private IS NULL OR users.is_private = FALSE)
+                    OR runs.user_id = %s
+                    OR EXISTS (
+                        SELECT 1 FROM follows
+                        WHERE follower_id = %s AND followed_id = runs.user_id AND status = 'accepted'
+                    )
+                  )
+                ORDER BY runs.created_at DESC
+                LIMIT %s
+            """, (pattern, viewer_id, viewer_id, limit))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
 def vouch_for_run(user_id, run_id):
     """Adds a vouch (or leaves alone, if one already exists).
     Returns (ok, error): error is 'not_found' if the run doesn't exist,

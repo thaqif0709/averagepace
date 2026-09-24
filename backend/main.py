@@ -39,6 +39,9 @@ from database import (
     insert_run,
     is_username_taken,
     like_post,
+    search_people,
+    search_posts,
+    search_runs_by_event,
     set_user_privacy,
     set_username,
     suggest_event_names,
@@ -325,6 +328,23 @@ def event_suggestions(q: str = ""):
     if len(clean_q) < 2:
         return {"suggestions": []}
     return {"suggestions": suggest_event_names(clean_q)}
+
+
+@app.get("/api/search")
+def search(q: str = "", type: str = "people", current_user: dict = Depends(get_current_user_optional)):
+    if type not in ("people", "posts", "runs"):
+        raise HTTPException(status_code=400, detail="Invalid search type")
+    clean_q = q.strip()
+    if len(clean_q) < 2:
+        return {"results": [], "type": type}
+    viewer_id = current_user["id"] if current_user else None
+    if type == "people":
+        results = search_people(clean_q)
+    elif type == "posts":
+        results = search_posts(clean_q, viewer_id=viewer_id)
+    else:
+        results = search_runs_by_event(clean_q, viewer_id=viewer_id)
+    return {"results": results, "type": type}
 
 
 @app.get("/api/users/{user_id}/followers")
