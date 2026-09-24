@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx'
 import { fetchUserRunsByDistance, updateRunMetadata, deleteRun } from '../api.js'
 import { formatDuration, formatEventDate, formatPace, todayLocalISO } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
+import RunningLoader from '../components/RunningLoader.jsx'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
 
@@ -304,6 +305,7 @@ export default function BestEffortDetailPage() {
       <p className="lede">Every {distanceLabel} you've logged, fastest first.</p>
 
       {error && <div className="banner err">{error}</div>}
+      {loading && <RunningLoader />}
       {!loading && !error && gated && (
         <div className="empty-state">This account is private. Follow to see their times.</div>
       )}

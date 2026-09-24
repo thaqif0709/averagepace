@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { fetchLeaderboard } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
+import RunningLoader from '../components/RunningLoader.jsx'
 
 const DISTANCES = [
   ['5k', '5K'],
@@ -77,6 +78,8 @@ export default function LeaderboardPage() {
       </div>
 
       {error && <div className="banner err">{error}</div>}
+
+      {loading && <RunningLoader />}
 
       {!loading && !error && rows.length > 0 && (
         <table>

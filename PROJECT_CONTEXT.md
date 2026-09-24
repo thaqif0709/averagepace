@@ -225,6 +225,13 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   leaderboard table becomes labeled cards below 600px instead of hiding a
   column (`data-label` attributes in `LeaderboardPage.jsx`, CSS-only card
   layout). Documented at the top of `frontend/src/index.css`.
+- **Loading state** (`RunningLoader.jsx`) — a small stroke-art running figure
+  (mid-stride pose, CSS-animated limb swing + bob, `prefers-reduced-motion`
+  turns it off) shown wherever a page currently renders nothing while its
+  data loads: the feed, a profile, the leaderboard, the Best Efforts
+  drill-down, and follower/following lists. Plain SVG rather than an emoji
+  character, for the same reason the result-link icon is - no font-fallback
+  rendering surprises across platforms.
 
 ## Known gaps / not yet built
 

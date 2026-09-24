@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import { fetchFollowers, fetchFollowing } from '../api.js'
+import RunningLoader from '../components/RunningLoader.jsx'
 
 export default function FollowListPage({ mode }) {
   const { userId } = useParams()
@@ -43,6 +44,7 @@ export default function FollowListPage({ mode }) {
       <h1>{title}</h1>
 
       {error && <div className="banner err">{error}</div>}
+      {loading && <RunningLoader />}
       {!loading && !error && gated && (
         <div className="empty-state">This account is private. Follow to see their {title.toLowerCase()}.</div>
       )}

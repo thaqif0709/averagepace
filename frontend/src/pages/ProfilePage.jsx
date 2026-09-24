@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import PostCard from '../components/PostCard.jsx'
+import RunningLoader from '../components/RunningLoader.jsx'
 import { formatDuration, formatEventDate, formatPace } from '../format.js'
 import {
   acceptFollowRequest,
@@ -163,7 +164,13 @@ export default function ProfilePage() {
       .catch(() => {})
   }
 
-  if (loading || authLoading) return null
+  if (loading || authLoading) {
+    return (
+      <div className="wrap wide">
+        <RunningLoader />
+      </div>
+    )
+  }
   if (error) {
     return (
       <div className="wrap wide">

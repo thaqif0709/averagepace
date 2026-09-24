@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import PostCard from '../components/PostCard.jsx'
+import RunningLoader from '../components/RunningLoader.jsx'
 import { createTextPost, fetchFeed } from '../api.js'
 
 export default function HomePage() {
@@ -101,6 +102,8 @@ export default function HomePage() {
       </div>
 
       {error && <div className="banner err">{error}</div>}
+
+      {feedLoading && <RunningLoader />}
 
       {!feedLoading && !error && posts.length === 0 && (
         <div className="empty-state">
