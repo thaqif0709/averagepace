@@ -97,7 +97,15 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   through a post).
   - **Home feed** (`/`) — "Following" and "Everyone" tabs (URL-driven via
     `?scope=`), a composer for text posts when signed in. "Everyone" only
-    ever shows posts from public accounts.
+    ever shows posts from public accounts. Logged-out visitors see a
+    mission-statement hero instead of the bare feed: the problem (official
+    times scattered across a different results site per race), the pitch
+    (paste the link, log the time, one running history), the Strava jab
+    (best-effort history sits behind a paywall there; it doesn't here), and
+    a 3-step "how it works" before the public feed continues below as
+    social proof. Swapped in purely on `!loading && !user` in
+    `HomePage.jsx` - logged-in users see the same feed as always, no new
+    route.
   - **Public profile** (`/profile/:userId`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),

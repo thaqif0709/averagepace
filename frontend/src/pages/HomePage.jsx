@@ -66,40 +66,75 @@ export default function HomePage() {
 
   return (
     <div className="wrap wide">
-      <p className="eyebrow">The feed</p>
-      <h1>What's everyone up to?</h1>
-
       {!loading && user && (
-        <form onSubmit={handlePost} className="composer">
-          <textarea
-            placeholder="Share something with your followers..."
-            value={composeText}
-            maxLength={500}
-            onChange={(e) => setComposeText(e.target.value)}
-          />
-          <button type="submit" disabled={posting || !composeText.trim()}>
-            {posting ? 'Posting…' : 'Post'}
-          </button>
-        </form>
+        <>
+          <p className="eyebrow">The feed</p>
+          <h1>What's everyone up to?</h1>
+          <form onSubmit={handlePost} className="composer">
+            <textarea
+              placeholder="Share something with your followers..."
+              value={composeText}
+              maxLength={500}
+              onChange={(e) => setComposeText(e.target.value)}
+            />
+            <button type="submit" disabled={posting || !composeText.trim()}>
+              {posting ? 'Posting…' : 'Post'}
+            </button>
+          </form>
+        </>
       )}
 
       {!loading && !user && (
-        <div className="result-card">
-          <p style={{ marginTop: 0 }}>Sign in to post and see who you follow.</p>
-          <GoogleSignInButton />
-        </div>
+        <>
+          <section className="hero">
+            <p className="eyebrow">Race results, consolidated</p>
+            <h1>All your race results.<br />One place. No paywall.</h1>
+            <p className="lede">
+              Official times live scattered across a different results site
+              for every race — one for the marathon, another for last
+              month's local 10K. Averagepace pulls them into a single
+              running history: paste the link, log the time, done. Strava
+              keeps your best-effort history behind a subscription. We
+              don't — your data should be free.
+            </p>
+            <div className="hero-actions">
+              <GoogleSignInButton />
+              <Link to="/leaderboard" className="hero-secondary-link">See the leaderboard -&gt;</Link>
+            </div>
+          </section>
+
+          <div className="how-it-works">
+            <div className="step">
+              <span className="step-num">01</span>
+              <h3>Log your time</h3>
+              <p>Paste a link to your official result, or just type your time if you don't have one yet.</p>
+            </div>
+            <div className="step">
+              <span className="step-num">02</span>
+              <h3>Get a trust score</h3>
+              <p>Every entry is scored green, yellow, or red based on how verifiable it is — never a black box.</p>
+            </div>
+            <div className="step">
+              <span className="step-num">03</span>
+              <h3>It's yours, free</h3>
+              <p>Your full history and best efforts live on your profile and the leaderboard. No paywall, ever.</p>
+            </div>
+          </div>
+
+          <h2>Latest logged runs</h2>
+        </>
       )}
 
-      <div className="filters">
-        {user && (
+      {user && (
+        <div className="filters">
           <Link to="/?scope=following" className={scope === 'following' ? 'active' : ''}>
             Following
           </Link>
-        )}
-        <Link to="/?scope=everyone" className={scope === 'everyone' ? 'active' : ''}>
-          Everyone
-        </Link>
-      </div>
+          <Link to="/?scope=everyone" className={scope === 'everyone' ? 'active' : ''}>
+            Everyone
+          </Link>
+        </div>
+      )}
 
       {error && <div className="banner err">{error}</div>}
 
