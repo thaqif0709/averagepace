@@ -278,11 +278,13 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   nothing while its data loads: the feed, a profile, the leaderboard, the
   Best Efforts drill-down, and follower/following lists. The JSON asset is
   bundled locally (not fetched from a CDN at runtime) so the loading
-  indicator itself never depends on an external network call.
-  `prefers-reduced-motion` freezes it on the first frame via
-  `anim.goToAndStop(0, true)` instead of `autoplay`, checked in JS
-  (`window.matchMedia`) rather than CSS since the animation is driven by
-  the Lottie player, not CSS keyframes.
+  indicator itself never depends on an external network call. Always
+  autoplays regardless of `prefers-reduced-motion` - an earlier version
+  froze it on that setting (matching how the previous hand-rolled SVG
+  runner behaved), but a small self-contained "something is loading" spinner
+  is functional UI, not the large-scale decorative motion (parallax,
+  auto-scroll) that setting exists to suppress, and freezing it just reads
+  as broken on a device with that setting on.
 
 ## Known gaps / not yet built
 

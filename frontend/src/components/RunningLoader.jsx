@@ -6,15 +6,13 @@ export default function RunningLoader({ label = 'Loading…' }) {
   const containerRef = useRef(null)
 
   useEffect(() => {
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const anim = lottie.loadAnimation({
       container: containerRef.current,
       renderer: 'svg',
       loop: true,
-      autoplay: !reduceMotion,
+      autoplay: true,
       animationData: timerAnimation,
     })
-    if (reduceMotion) anim.goToAndStop(0, true)
     return () => anim.destroy()
   }, [])
 
