@@ -35,6 +35,31 @@ export function autoFormatDurationInput(raw) {
   return `${parseInt(hours, 10)}:${minutes}:${seconds}`
 }
 
+/** Today's date as "YYYY-MM-DD" in the browser's local timezone, for an
+ * event-date input's `max` (a race can't happen in the future). */
+export function todayLocalISO() {
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+/**
+ * Formats a "YYYY-MM-DD" date string as e.g. "Mar 15, 2026". Parses the
+ * components directly rather than via `new Date(dateStr)`, which reads a
+ * bare date as UTC midnight and can display a day early in timezones behind
+ * UTC.
+ */
+export function formatEventDate(dateStr) {
+  if (!dateStr) return null
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
 /** Parses "MM:SS" or "H:MM:SS" into seconds. Returns null if unparseable. */
 export function parseDuration(input) {
   if (!input) return null

@@ -199,6 +199,16 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   Shown next to the distance everywhere a run appears (e.g. "5K — Klang
   Marathon 2026"). A dedicated per-event page (its own mini-leaderboard of
   everyone who ran that event) was explicitly scoped out as too big for now.
+- **Event date** (`event_date` on `runs`, optional `DATE`, distinct from
+  `created_at` - when the race happened vs. when it was logged, so a run can
+  be entered after the fact) — an optional date input on `/submit` (capped
+  at today; a race can't be in the future), editable later same as event
+  name/time type/result link. Shown as "(Mar 15, 2026)" next to the event
+  name everywhere a run appears - or on its own if there's a date but no
+  name - via `formatEventDate()` in `format.js`, which parses the
+  "YYYY-MM-DD" string's components directly rather than through `new
+  Date(str)` to avoid that reading a bare date as UTC midnight and
+  displaying a day early west of UTC.
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
   in the URL (shareable links); excludes runs by currently-private users

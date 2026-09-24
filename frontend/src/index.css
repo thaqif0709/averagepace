@@ -308,7 +308,7 @@ label:first-of-type { margin-top: 0; }
   line-height: 1.5;
 }
 
-input[type="text"], input[type="number"], input[type="url"], select, textarea {
+input[type="text"], input[type="number"], input[type="url"], input[type="date"], select, textarea {
   width: 100%;
   background: var(--bg);
   border: 1px solid rgba(42,40,35,0.16);

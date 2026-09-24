@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import PostCard from '../components/PostCard.jsx'
-import { formatDuration, formatPace } from '../format.js'
+import { formatDuration, formatEventDate, formatPace } from '../format.js'
 import {
   acceptFollowRequest,
   declineFollowRequest,
@@ -288,7 +288,13 @@ export default function ProfilePage() {
                   {formatPace(be.pace_sec_per_km)}
                   {be.time_type && <span className="time-type-tag">{be.time_type}</span>}
                 </div>
-                {be.event_name && <div className="best-effort-event">{be.event_name}</div>}
+                {(be.event_name || be.event_date) && (
+                  <div className="best-effort-event">
+                    {be.event_name}
+                    {be.event_name && be.event_date && ' '}
+                    {be.event_date && `(${formatEventDate(be.event_date)})`}
+                  </div>
+                )}
               </Link>
             ))}
           </div>

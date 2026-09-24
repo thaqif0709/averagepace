@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import { updatePost, deleteRun, deletePost, vouchForRun, unvouchForRun, likePost, unlikePost } from '../api.js'
-import { formatDuration, formatPace } from '../format.js'
+import { formatDuration, formatEventDate, formatPace, todayLocalISO } from '../format.js'
 import ExternalLinkIcon from './ExternalLinkIcon.jsx'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
@@ -23,6 +23,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(post.body || '')
   const [editEventName, setEditEventName] = useState(post.event_name || '')
+  const [editEventDate, setEditEventDate] = useState(post.event_date || '')
   const [editTimeType, setEditTimeType] = useState(post.time_type || '')
   const [editResultUrl, setEditResultUrl] = useState(post.result_url || '')
   const [saving, setSaving] = useState(false)
@@ -54,6 +55,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
   function startEdit() {
     setDraft(post.body || '')
     setEditEventName(post.event_name || '')
+    setEditEventDate(post.event_date || '')
     setEditTimeType(post.time_type || '')
     setEditResultUrl(post.result_url || '')
     setError(null)
@@ -65,6 +67,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
   function startDelete() {
     setDraft(post.body || '')
     setEditEventName(post.event_name || '')
+    setEditEventDate(post.event_date || '')
     setEditTimeType(post.time_type || '')
     setEditResultUrl(post.result_url || '')
     setError(null)
@@ -78,7 +81,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
     setError(null)
     try {
       const runMetadata = post.run_id
-        ? { eventName: editEventName.trim(), timeType: editTimeType, resultUrl: editResultUrl.trim() }
+        ? { eventName: editEventName.trim(), timeType: editTimeType, resultUrl: editResultUrl.trim(), eventDate: editEventDate }
         : null
       const updated = await updatePost(token, post.id, draft.trim(), runMetadata)
       setEditing(false)
@@ -201,6 +204,15 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
                   onChange={(e) => setEditEventName(e.target.value)}
                 />
 
+                <label htmlFor={`event_date_${post.id}`}>Event date</label>
+                <input
+                  type="date"
+                  id={`event_date_${post.id}`}
+                  max={todayLocalISO()}
+                  value={editEventDate}
+                  onChange={(e) => setEditEventDate(e.target.value)}
+                />
+
                 <label>Which time is this?</label>
                 <div className="segmented">
                   <button
@@ -287,6 +299,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
             <span className="post-activity-item">
               {DISTANCE_LABELS[post.distance_bucket] ?? post.distance_bucket}
               {post.event_name && ` — ${post.event_name}`}
+              {post.event_date && ` (${formatEventDate(post.event_date)})`}
             </span>
             <span className="post-activity-item time-cell">
               {formatDuration(post.duration_s)}

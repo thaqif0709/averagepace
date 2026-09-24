@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -60,10 +61,10 @@ DISTANCE_LABELS = {"5k": "5K", "10k": "10K", "half": "Half Marathon", "marathon"
 init_db()
 
 
-def clean_run_metadata(event_name, time_type, result_url):
-    """Shared validation for the three run fields that stay editable after
+def clean_run_metadata(event_name, time_type, result_url, event_date):
+    """Shared validation for the run fields that stay editable after
     submission (unlike distance/duration). Raises HTTPException on bad input,
-    else returns (event_name, time_type, result_url) cleaned/normalized."""
+    else returns (event_name, time_type, result_url, event_date) cleaned/normalized."""
     clean_event_name = (event_name or "").strip() or None
     if clean_event_name and len(clean_event_name) > 200:
         raise HTTPException(status_code=400, detail="Event name is too long (max 200 characters)")
@@ -80,7 +81,14 @@ def clean_run_metadata(event_name, time_type, result_url):
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             raise HTTPException(status_code=400, detail="Result link must be a valid http:// or https:// URL")
 
-    return clean_event_name, clean_time_type, clean_result_url
+    clean_event_date = (event_date or "").strip() or None
+    if clean_event_date:
+        try:
+            clean_event_date = date.fromisoformat(clean_event_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Event date must be a valid date")
+
+    return clean_event_name, clean_time_type, clean_result_url, clean_event_date
 
 
 @app.get("/api/health")
@@ -142,14 +150,15 @@ def edit_post(post_id: int, body: dict = Body(...), current_user: dict = Depends
         raise HTTPException(status_code=404, detail="Post not found")
 
     if updated["run_id"]:
-        event_name, time_type, result_url = clean_run_metadata(
-            body.get("event_name"), body.get("time_type"), body.get("result_url")
+        event_name, time_type, result_url, event_date = clean_run_metadata(
+            body.get("event_name"), body.get("time_type"), body.get("result_url"), body.get("event_date")
         )
-        run = update_run_metadata(updated["run_id"], current_user["id"], event_name, time_type, result_url)
+        run = update_run_metadata(updated["run_id"], current_user["id"], event_name, time_type, result_url, event_date)
         if run:
             updated["event_name"] = run["event_name"]
             updated["time_type"] = run["time_type"]
             updated["result_url"] = run["result_url"]
+            updated["event_date"] = run["event_date"]
 
     return updated
 
@@ -184,10 +193,10 @@ def edit_run(run_id: int, body: dict = Body(...), current_user: dict = Depends(g
     """Metadata-only edit for a run directly (no attached post/caption in
     play) - the Best Efforts drill-down uses this rather than PATCH
     /api/posts/{id}, since it never shows a caption to begin with."""
-    event_name, time_type, result_url = clean_run_metadata(
-        body.get("event_name"), body.get("time_type"), body.get("result_url")
+    event_name, time_type, result_url, event_date = clean_run_metadata(
+        body.get("event_name"), body.get("time_type"), body.get("result_url"), body.get("event_date")
     )
-    updated = update_run_metadata(run_id, current_user["id"], event_name, time_type, result_url)
+    updated = update_run_metadata(run_id, current_user["id"], event_name, time_type, result_url, event_date)
     if not updated:
         raise HTTPException(status_code=404, detail="Run not found")
     return updated
@@ -359,6 +368,7 @@ async def upload(
     result_url: str | None = Form(None),
     time_type: str | None = Form(None),
     event_name: str | None = Form(None),
+    event_date: str | None = Form(None),
     caption: str | None = Form(None),
     gpx_file: UploadFile | None = File(None),
     current_user: dict = Depends(get_current_user),
@@ -366,7 +376,9 @@ async def upload(
     runner_name = current_user["name"]
     has_gpx = gpx_file is not None and gpx_file.filename
 
-    clean_event_name, clean_time_type, clean_result_url = clean_run_metadata(event_name, time_type, result_url)
+    clean_event_name, clean_time_type, clean_result_url, clean_event_date = clean_run_metadata(
+        event_name, time_type, result_url, event_date
+    )
 
     if has_gpx:
         gpx_bytes = await gpx_file.read()
@@ -381,6 +393,7 @@ async def upload(
 
     result["time_type"] = clean_time_type
     result["event_name"] = clean_event_name
+    result["event_date"] = clean_event_date
 
     saved = False
     error = None
@@ -399,6 +412,7 @@ async def upload(
             result_url=result.get("result_url"),
             time_type=clean_time_type,
             event_name=clean_event_name,
+            event_date=clean_event_date,
         )
         if saved:
             create_post(user_id=current_user["id"], body=(caption or "").strip() or None, run_id=run_id)

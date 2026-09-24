@@ -18,7 +18,7 @@ export async function fetchMe(token) {
   return res.json()
 }
 
-export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, resultUrl, timeType, eventName, caption }) {
+export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, resultUrl, timeType, eventName, eventDate, caption }) {
   const form = new FormData()
   form.append('claimed_distance_km', claimedDistanceKm)
   if (gpxFile) {
@@ -29,6 +29,7 @@ export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gp
   if (resultUrl) form.append('result_url', resultUrl)
   if (timeType) form.append('time_type', timeType)
   if (eventName) form.append('event_name', eventName)
+  if (eventDate) form.append('event_date', eventDate)
   if (caption) form.append('caption', caption)
 
   const res = await fetch(`${API_URL}/api/upload`, {
@@ -79,7 +80,13 @@ export async function createTextPost(token, body) {
 
 export async function updatePost(token, postId, body, runMetadata) {
   const payload = runMetadata
-    ? { body, event_name: runMetadata.eventName, time_type: runMetadata.timeType, result_url: runMetadata.resultUrl }
+    ? {
+        body,
+        event_name: runMetadata.eventName,
+        time_type: runMetadata.timeType,
+        result_url: runMetadata.resultUrl,
+        event_date: runMetadata.eventDate,
+      }
     : { body }
   const res = await fetch(`${API_URL}/api/posts/${postId}`, {
     method: 'PATCH',
@@ -117,11 +124,11 @@ export async function deletePost(token, postId) {
   return res.json()
 }
 
-export async function updateRunMetadata(token, runId, { eventName, timeType, resultUrl }) {
+export async function updateRunMetadata(token, runId, { eventName, timeType, resultUrl, eventDate }) {
   const res = await fetch(`${API_URL}/api/runs/${runId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify({ event_name: eventName, time_type: timeType, result_url: resultUrl }),
+    body: JSON.stringify({ event_name: eventName, time_type: timeType, result_url: resultUrl, event_date: eventDate }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => null)

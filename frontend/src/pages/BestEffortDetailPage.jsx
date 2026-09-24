@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import { fetchUserRunsByDistance, updateRunMetadata, deleteRun } from '../api.js'
-import { formatDuration, formatPace } from '../format.js'
+import { formatDuration, formatEventDate, formatPace, todayLocalISO } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
@@ -10,6 +10,7 @@ const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marat
 function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
   const [editing, setEditing] = useState(false)
   const [eventName, setEventName] = useState(run.event_name || '')
+  const [eventDate, setEventDate] = useState(run.event_date || '')
   const [timeType, setTimeType] = useState(run.time_type || '')
   const [resultUrl, setResultUrl] = useState(run.result_url || '')
   const [saving, setSaving] = useState(false)
@@ -32,6 +33,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
 
   function startEdit() {
     setEventName(run.event_name || '')
+    setEventDate(run.event_date || '')
     setTimeType(run.time_type || '')
     setResultUrl(run.result_url || '')
     setError(null)
@@ -42,6 +44,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
 
   function startDelete() {
     setEventName(run.event_name || '')
+    setEventDate(run.event_date || '')
     setTimeType(run.time_type || '')
     setResultUrl(run.result_url || '')
     setError(null)
@@ -58,6 +61,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
         eventName: eventName.trim(),
         timeType,
         resultUrl: resultUrl.trim(),
+        eventDate,
       })
       setEditing(false)
       onUpdated({ ...run, ...updated })
@@ -93,6 +97,15 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               autoFocus
+            />
+
+            <label htmlFor={`run_date_${run.id}`}>Event date</label>
+            <input
+              type="date"
+              id={`run_date_${run.id}`}
+              max={todayLocalISO()}
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
             />
 
             <label>Which time is this?</label>
@@ -200,7 +213,17 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
           </div>
         )}
       </td>
-      <td data-label="Event">{run.event_name || '—'}</td>
+      <td data-label="Event">
+        {run.event_name || run.event_date ? (
+          <>
+            {run.event_name}
+            {run.event_name && run.event_date && ' '}
+            {run.event_date && `(${formatEventDate(run.event_date)})`}
+          </>
+        ) : (
+          '—'
+        )}
+      </td>
       <td className="time-cell" data-label="Time">
         {formatDuration(run.duration_s)}
         {run.time_type && <span className="time-type-tag">{run.time_type}</span>}

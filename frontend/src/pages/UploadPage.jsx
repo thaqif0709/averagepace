@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth.jsx'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { submitRun, fetchEventSuggestions } from '../api.js'
-import { autoFormatDurationInput, formatDuration, formatPace, parseDuration } from '../format.js'
+import { autoFormatDurationInput, formatDuration, formatEventDate, formatPace, parseDuration, todayLocalISO } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 
 export default function UploadPage() {
@@ -12,6 +12,7 @@ export default function UploadPage() {
   const [resultUrl, setResultUrl] = useState('')
   const [timeType, setTimeType] = useState('gun')
   const [eventName, setEventName] = useState('')
+  const [eventDate, setEventDate] = useState('')
   const [eventSuggestions, setEventSuggestions] = useState([])
   const [showEventSuggestions, setShowEventSuggestions] = useState(false)
   const [caption, setCaption] = useState('')
@@ -51,7 +52,7 @@ export default function UploadPage() {
 
     setSubmitting(true)
     try {
-      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, resultUrl, timeType, eventName, caption })
+      const data = await submitRun({ token, claimedDistanceKm, claimedDurationS, resultUrl, timeType, eventName, eventDate, caption })
       setResponse(data)
       setCaption('')
     } catch (err) {
@@ -149,6 +150,15 @@ export default function UploadPage() {
               used, so the same event stays tagged the same way.
             </p>
 
+            <label htmlFor="event_date">Event date (optional)</label>
+            <input
+              type="date"
+              id="event_date"
+              max={todayLocalISO()}
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+            />
+
             <div className="form-row">
               <div className="form-field">
                 <label htmlFor="claimed_distance_km">Distance (km)</label>
@@ -228,7 +238,13 @@ export default function UploadPage() {
             {result.tier === 'yellow' && (result.file_hash ? 'Device-synced — needs review' : 'Official result linked')}
             {result.tier === 'red' && (result.file_hash ? 'Flagged — manual review required' : 'Logged — no link added yet')}
           </span>
-          {result.event_name && <p className="result-event-name">{result.event_name}</p>}
+          {(result.event_name || result.event_date) && (
+            <p className="result-event-name">
+              {result.event_name}
+              {result.event_name && result.event_date && ' '}
+              {result.event_date && `(${formatEventDate(result.event_date)})`}
+            </p>
+          )}
           <div className="split-readout">
             {formatDuration(result.duration_s)}
             {result.time_type && <span className="time-type-tag">{result.time_type} time</span>}

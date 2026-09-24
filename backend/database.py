@@ -122,6 +122,9 @@ def init_db():
                     PRIMARY KEY (user_id, post_id)
                 )
             """)
+            # Optional date the race itself happened, distinct from created_at
+            # (when it was logged here) - lets someone log a run after the fact.
+            cur.execute("ALTER TABLE runs ADD COLUMN IF NOT EXISTS event_date DATE")
         conn.commit()
     finally:
         conn.close()
@@ -371,7 +374,7 @@ POST_SELECT = """
         p.id, p.body, p.created_at, p.edited_at,
         u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar_url,
         r.id AS run_id, r.distance_bucket, r.distance_km, r.duration_s,
-        r.pace_sec_per_km, r.trust_score, r.tier, r.result_url, r.time_type, r.event_name,
+        r.pace_sec_per_km, r.trust_score, r.tier, r.result_url, r.time_type, r.event_name, r.event_date,
         COALESCE(v.vouch_count, 0) AS vouch_count,
         EXISTS (
             SELECT 1 FROM vouches WHERE run_id = r.id AND user_id = %s
@@ -431,19 +434,19 @@ def update_post(post_id, user_id, body):
         conn.close()
 
 
-def update_run_metadata(run_id, user_id, event_name, time_type, result_url):
-    """Edits a run's event name / time type / result link - never distance or
-    duration, which stay fixed once vouches or leaderboard rank attach to
-    them (fixing those means deleting and resubmitting). Only the owner's
-    row matches."""
+def update_run_metadata(run_id, user_id, event_name, time_type, result_url, event_date):
+    """Edits a run's event name / time type / result link / event date -
+    never distance or duration, which stay fixed once vouches or leaderboard
+    rank attach to them (fixing those means deleting and resubmitting). Only
+    the owner's row matches."""
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                UPDATE runs SET event_name = %s, time_type = %s, result_url = %s
+                UPDATE runs SET event_name = %s, time_type = %s, result_url = %s, event_date = %s
                 WHERE id = %s AND user_id = %s
-                RETURNING id, event_name, time_type, result_url
-            """, (event_name, time_type, result_url, run_id, user_id))
+                RETURNING id, event_name, time_type, result_url, event_date
+            """, (event_name, time_type, result_url, event_date, run_id, user_id))
             updated = cur.fetchone()
         conn.commit()
         return updated
@@ -528,18 +531,19 @@ def get_posts_for_user(user_id, viewer_id=None, limit=100):
 
 def insert_run(runner_name, user_id, distance_bucket, distance_km, duration_s,
                 pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url=None, time_type=None,
-                event_name=None):
+                event_name=None, event_date=None):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO runs (runner_name, user_id, distance_bucket, distance_km, duration_s,
                                    pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url, time_type,
-                                   event_name)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                   event_name, event_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (runner_name, user_id, distance_bucket, distance_km, duration_s,
-                  pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url, time_type, event_name))
+                  pace_sec_per_km, trust_score, tier, flags, gpx_hash, result_url, time_type, event_name,
+                  event_date))
             new_id = cur.fetchone()[0]
         conn.commit()
         return True, new_id, None
