@@ -225,7 +225,15 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   displaying a day early west of UTC.
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
-  in the URL (shareable links); excludes runs by currently-private users
+  in the URL (shareable links); excludes runs by currently-private users.
+  Top 3 rank badges are gold/silver/bronze (`tbody tr:nth-child(1/2/3)
+  .rank` in `index.css`) rather than a single "highlight the winner" color.
+  `.rank` is always a fixed 24x24 flex box regardless of place, so the
+  rank column's width doesn't vary row to row and names stay aligned
+  down the column — it used to be a plain inline `<span>` with a
+  `min-width` that (being inline) never actually applied, so only rank 1's
+  circle badge had a real fixed width and every other row's name started
+  at a slightly different x-position.
 - **Storage** — PostgreSQL (was SQLite pre-restructure)
 - **Design system** — light, welcoming palette (cream/charcoal/Tyrian purple
   accent),

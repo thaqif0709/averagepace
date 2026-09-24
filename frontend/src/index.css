@@ -629,18 +629,27 @@ tr:hover td { background: var(--surface-2); }
   font-family: var(--mono);
   font-weight: 700;
   color: var(--muted);
-  min-width: 20px;
-}
-tbody tr:nth-child(1) .rank {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 24px;
   height: 24px;
   min-width: 24px;
+}
+tbody tr:nth-child(1) .rank {
   border-radius: 50%;
-  background: rgba(102,2,60,0.12);
-  color: var(--accent);
+  background: rgba(168,121,10,0.28);
+  color: var(--ink);
+}
+tbody tr:nth-child(2) .rank {
+  border-radius: 50%;
+  background: rgba(154,160,166,0.35);
+  color: var(--ink);
+}
+tbody tr:nth-child(3) .rank {
+  border-radius: 50%;
+  background: rgba(176,108,58,0.28);
+  color: var(--ink);
 }
 .time-cell {
   font-family: var(--mono);
