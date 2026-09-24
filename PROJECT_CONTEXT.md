@@ -71,6 +71,29 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   30-day JWT session stored in `localStorage`. Submitting/posting/following
   requires being signed in; viewing the leaderboard, the "Everyone" feed, and
   public profiles doesn't.
+- **Usernames** (`users.username`, nullable TEXT) — a stable, human-chosen
+  handle distinct from `users.id`, which stays the real internal identifier
+  (every FK - follows, posts, runs, vouches, likes - still points at that
+  numeric id; profile URLs are still `/profile/:userId`, not
+  `/profile/:username`). Uniqueness is case-insensitive, enforced by a
+  `UNIQUE INDEX ON (LOWER(username))` rather than a plain column constraint
+  so any number of NULLs (accounts that haven't picked one yet) stay
+  allowed; format (3-20 chars, letters/numbers/underscores) is validated in
+  `clean_username()` (`main.py`), not the DB. `GET /api/username/check`
+  live-checks availability (debounced 350ms client-side,
+  `useUsernameStatus.js`), excluding the caller's own current username so
+  re-saving it unchanged doesn't read as "taken." `PATCH /api/auth/me` now
+  accepts `username` alongside the pre-existing `is_private`, returns the
+  full fresh user row either way. A brand-new or pre-existing account with
+  `username IS NULL` gets a blocking modal (`ChooseUsernameDialog.jsx`,
+  rendered at the `App.jsx` level whenever `user && !user.username`) that
+  covers the page below the topbar (lower z-index than `.topbar`, so Sign
+  out stays reachable as an escape hatch) until they pick one - no skip
+  option. Editable later from your own profile page
+  (`.username-edit-form` in `ProfilePage.jsx`, next to the privacy toggle).
+  Shown as `@username` under the display name on any profile, and next to
+  the author name on every post (`PostCard.jsx`) once `POST_SELECT` started
+  including it.
 - **Social layer** — Twitter-style. Users follow each other
   (`follows` table); posts (`posts` table) are either free-text or linked to
   a run (`run_id`), so a scored submission and a text update share one feed.

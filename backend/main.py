@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import date
 from urllib.parse import urlparse
 
@@ -30,13 +31,16 @@ from database import (
     get_posts_for_user,
     get_recently_verified,
     get_review_queue,
+    get_user_by_id,
     get_user_public,
     get_user_runs_by_distance,
     get_vouch_count,
     init_db,
     insert_run,
+    is_username_taken,
     like_post,
     set_user_privacy,
+    set_username,
     suggest_event_names,
     unfollow_user,
     unlike_post,
@@ -61,8 +65,22 @@ app.add_middleware(
 )
 
 DISTANCE_LABELS = {"5k": "5K", "10k": "10K", "half": "Half Marathon", "marathon": "Marathon"}
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
 
 init_db()
+
+
+def clean_username(username):
+    """Validates a proposed username. Raises HTTPException on bad input,
+    else returns it unchanged - case as typed is what's stored/displayed,
+    uniqueness is enforced case-insensitively at the DB level."""
+    clean = (username or "").strip()
+    if not USERNAME_RE.match(clean):
+        raise HTTPException(
+            status_code=400,
+            detail="Username must be 3-20 characters: letters, numbers, and underscores only",
+        )
+    return clean
 
 
 def clean_run_metadata(event_name, time_type, result_url, event_date):
@@ -127,9 +145,26 @@ def auth_me(current_user: dict = Depends(get_current_user)):
 
 @app.patch("/api/auth/me")
 def update_me(body: dict = Body(...), current_user: dict = Depends(get_current_user)):
-    if "is_private" not in body:
+    if "is_private" not in body and "username" not in body:
         raise HTTPException(status_code=400, detail="Nothing to update")
-    return set_user_privacy(current_user["id"], bool(body["is_private"]))
+    if "username" in body:
+        clean = clean_username(body["username"])
+        updated = set_username(current_user["id"], clean)
+        if updated is None:
+            raise HTTPException(status_code=409, detail="That username is already taken")
+    if "is_private" in body:
+        set_user_privacy(current_user["id"], bool(body["is_private"]))
+    return get_user_by_id(current_user["id"])
+
+
+@app.get("/api/username/check")
+def check_username(username: str, current_user: dict = Depends(get_current_user_optional)):
+    clean = (username or "").strip()
+    if not USERNAME_RE.match(clean):
+        return {"available": False, "reason": "invalid"}
+    exclude_id = current_user["id"] if current_user else None
+    taken = is_username_taken(clean, exclude_user_id=exclude_id)
+    return {"available": not taken, "reason": "taken" if taken else None}
 
 
 @app.post("/api/posts")

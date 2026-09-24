@@ -140,6 +140,17 @@ def init_db():
             admin_emails = [e.strip() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()]
             if admin_emails:
                 cur.execute("UPDATE users SET is_admin = TRUE WHERE email = ANY(%s)", (admin_emails,))
+            # A stable, user-chosen handle distinct from the numeric users.id
+            # PK (which stays internal - every FK keeps pointing at that, this
+            # is purely a human-facing identifier). Nullable so existing
+            # accounts don't break; the frontend blocks a logged-in user with
+            # no username from doing anything else until they pick one.
+            # Format is validated in clean_username() (main.py), not here -
+            # this index only enforces uniqueness, case-insensitively, while
+            # still allowing any number of NULLs (accounts that haven't
+            # picked one yet).
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT")
+            cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique ON users (LOWER(username))")
         conn.commit()
     finally:
         conn.close()
@@ -156,7 +167,7 @@ def upsert_user(google_sub, email, name, avatar_url):
                     email = EXCLUDED.email,
                     name = EXCLUDED.name,
                     avatar_url = EXCLUDED.avatar_url
-                RETURNING id, google_sub, email, name, avatar_url, is_admin
+                RETURNING id, google_sub, email, name, avatar_url, is_admin, username
             """, (google_sub, email, name, avatar_url))
             user = cur.fetchone()
         conn.commit()
@@ -170,7 +181,7 @@ def get_user_by_id(user_id):
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, google_sub, email, name, avatar_url, is_private, is_admin FROM users WHERE id = %s",
+                "SELECT id, google_sub, email, name, avatar_url, is_private, is_admin, username FROM users WHERE id = %s",
                 (user_id,),
             )
             return cur.fetchone()
@@ -184,10 +195,51 @@ def get_user_public(user_id):
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, name, avatar_url, is_private FROM users WHERE id = %s",
+                "SELECT id, name, avatar_url, is_private, username FROM users WHERE id = %s",
                 (user_id,),
             )
             return cur.fetchone()
+    finally:
+        conn.close()
+
+
+def is_username_taken(username, exclude_user_id=None):
+    """Case-insensitive check. exclude_user_id lets a user re-check their
+    own current username (e.g. re-submitting the profile form unchanged)
+    without it reporting itself as taken."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            if exclude_user_id is not None:
+                cur.execute(
+                    "SELECT 1 FROM users WHERE LOWER(username) = LOWER(%s) AND id != %s",
+                    (username, exclude_user_id),
+                )
+            else:
+                cur.execute("SELECT 1 FROM users WHERE LOWER(username) = LOWER(%s)", (username,))
+            return cur.fetchone() is not None
+    finally:
+        conn.close()
+
+
+def set_username(user_id, username):
+    """Sets this user's username. Returns the updated user row, or None if
+    that username (case-insensitively) is already taken by someone else -
+    the UPDATE targets this user's own row, so a no-op re-save of the same
+    username (or just a casing change) never conflicts with itself."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                UPDATE users SET username = %s WHERE id = %s
+                RETURNING id, google_sub, email, name, avatar_url, is_private, is_admin, username
+            """, (username, user_id))
+            updated = cur.fetchone()
+        conn.commit()
+        return updated
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        return None
     finally:
         conn.close()
 
@@ -387,7 +439,7 @@ def get_following(user_id):
 POST_SELECT = """
     SELECT
         p.id, p.body, p.created_at, p.edited_at,
-        u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar_url,
+        u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar_url, u.username AS user_username,
         r.id AS run_id, r.distance_bucket, r.distance_km, r.duration_s,
         r.pace_sec_per_km, r.trust_score, r.tier, r.result_url, r.time_type, r.event_name, r.event_date,
         COALESCE(v.vouch_count, 0) AS vouch_count,

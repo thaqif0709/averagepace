@@ -191,6 +191,26 @@ export async function updatePrivacy(token, isPrivate) {
   return res.json()
 }
 
+export async function checkUsername(username, token) {
+  const params = new URLSearchParams({ username })
+  const res = await fetch(`${API_URL}/api/username/check?${params}`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Failed to check username')
+  return res.json()
+}
+
+export async function setUsername(token, username) {
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify({ username }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to set username')
+  }
+  return res.json()
+}
+
 export async function fetchFollowRequests(token) {
   const res = await fetch(`${API_URL}/api/follow-requests`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load follow requests')

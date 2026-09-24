@@ -9,6 +9,7 @@ import ProfilePage, { ProfileRedirect } from './pages/ProfilePage.jsx'
 import FollowListPage from './pages/FollowListPage.jsx'
 import BestEffortDetailPage from './pages/BestEffortDetailPage.jsx'
 import AdminReviewPage from './pages/AdminReviewPage.jsx'
+import ChooseUsernameDialog from './components/ChooseUsernameDialog.jsx'
 
 export default function App() {
   const { user, loading, logout } = useAuth()
@@ -87,6 +88,8 @@ export default function App() {
       </div>
 
       <div className={`mobile-menu-backdrop ${menuOpen ? 'open' : ''}`} onClick={closeMenu} />
+
+      {!loading && user && !user.username && <ChooseUsernameDialog />}
 
       <Routes>
         <Route path="/" element={<HomePage />} />

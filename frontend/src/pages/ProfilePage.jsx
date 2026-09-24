@@ -3,6 +3,8 @@ import { useParams, Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import PostCard from '../components/PostCard.jsx'
 import RunningLoader from '../components/RunningLoader.jsx'
+import UsernameStatusMessage from '../components/UsernameStatusMessage.jsx'
+import { useUsernameStatus, isUsernameStatusSubmittable } from '../useUsernameStatus.js'
 import { formatDuration, formatEventDate, formatPace } from '../format.js'
 import {
   acceptFollowRequest,
@@ -12,6 +14,7 @@ import {
   fetchUserPosts,
   fetchUserProfile,
   followUser,
+  setUsername as saveUsername,
   unfollowUser,
   updatePrivacy,
 } from '../api.js'
@@ -28,7 +31,7 @@ export function ProfileRedirect() {
 
 export default function ProfilePage() {
   const { userId } = useParams()
-  const { user: viewer, token, loading: authLoading } = useAuth()
+  const { user: viewer, token, loading: authLoading, updateUser } = useAuth()
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
   const [postsGated, setPostsGated] = useState(false)
@@ -39,6 +42,10 @@ export default function ProfilePage() {
   const [privacyBusy, setPrivacyBusy] = useState(false)
   const [requests, setRequests] = useState([])
   const [busyRequestId, setBusyRequestId] = useState(null)
+  const [usernameValue, setUsernameValue] = useState('')
+  const [usernameSaving, setUsernameSaving] = useState(false)
+  const [usernameError, setUsernameError] = useState(null)
+  const usernameStatus = useUsernameStatus(usernameValue, token, profile?.username)
 
   useEffect(() => {
     if (authLoading) return
@@ -66,6 +73,10 @@ export default function ProfilePage() {
       cancelled = true
     }
   }, [userId, token, authLoading])
+
+  useEffect(() => {
+    if (profile?.is_self) setUsernameValue(profile.username || '')
+  }, [profile?.is_self, profile?.username])
 
   useEffect(() => {
     if (!profile?.is_self) return
@@ -118,6 +129,25 @@ export default function ProfilePage() {
       setError(err.message)
     } finally {
       setPrivacyBusy(false)
+    }
+  }
+
+  async function handleSaveUsername(e) {
+    e.preventDefault()
+    if (!isUsernameStatusSubmittable(usernameStatus)) return
+    setUsernameSaving(true)
+    setUsernameError(null)
+    try {
+      const updated = await saveUsername(token, usernameValue.trim())
+      setProfile((prev) => ({ ...prev, username: updated.username }))
+      // Every post in this list is this user's own (this is their profile
+      // page), so all of them show the stale username until this patches it.
+      setPosts((prev) => prev.map((p) => ({ ...p, user_username: updated.username })))
+      updateUser({ username: updated.username })
+    } catch (err) {
+      setUsernameError(err.message)
+    } finally {
+      setUsernameSaving(false)
     }
   }
 
@@ -208,6 +238,7 @@ export default function ProfilePage() {
               </svg>
             )}
           </h1>
+          {profile.username && <p className="profile-username">@{profile.username}</p>}
           <p className="lede">
             <Link to={`/profile/${profile.id}/followers`}>{profile.follower_count} followers</Link>
             {' · '}
@@ -233,6 +264,23 @@ export default function ProfilePage() {
 
       {profile.is_self && (
         <div className="profile-settings">
+          <form onSubmit={handleSaveUsername} className="username-edit-form">
+            <label htmlFor="profile_username">Username</label>
+            <input
+              type="text"
+              id="profile_username"
+              maxLength={20}
+              autoComplete="off"
+              value={usernameValue}
+              onChange={(e) => setUsernameValue(e.target.value)}
+            />
+            <UsernameStatusMessage status={usernameStatus} />
+            {usernameError && <p className="post-edit-error">{usernameError}</p>}
+            <button type="submit" disabled={!isUsernameStatusSubmittable(usernameStatus) || usernameSaving}>
+              {usernameSaving ? 'Saving…' : 'Save username'}
+            </button>
+          </form>
+
           <label className="privacy-toggle">
             <input type="checkbox" checked={profile.is_private} onChange={togglePrivacy} disabled={privacyBusy} />
             Private account

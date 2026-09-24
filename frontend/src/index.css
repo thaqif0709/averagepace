@@ -180,6 +180,37 @@ body {
 .mobile-menu-backdrop { display: none; }
 .mobile-menu { display: none; }
 
+/* --- modal dialogs --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(42,40,35,0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 32px;
+}
+.modal h2 { margin: 0 0 12px; }
+.modal .lede { margin-bottom: 24px; }
+.username-status {
+  font-size: 13px;
+  margin: 8px 0 0;
+  color: var(--ink-dim);
+}
+.username-status-ok { color: var(--green); }
+.username-status-bad { color: var(--red); }
+
 /* --- page shell / type scale --- */
 .wrap {
   max-width: 720px;
@@ -302,6 +333,12 @@ form .form-row label { margin-top: 0; }
 .profile-header .avatar-fallback { width: 64px; height: 64px; font-size: 24px; }
 .profile-header h1 { margin-bottom: 4px; display: flex; align-items: center; gap: 0.2em; }
 .private-lock { width: 0.5em; height: 0.5em; color: var(--ink-dim); flex-shrink: 0; }
+.profile-username {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--ink-dim);
+  margin: 0 0 6px;
+}
 .profile-header .lede { margin: 0; }
 .profile-header .lede a { color: var(--ink-dim); text-decoration: underline; }
 .profile-header .lede a:hover { color: var(--accent); }
@@ -764,6 +801,11 @@ tbody tr:nth-child(3) .rank {
   text-decoration: none;
 }
 .post-author:hover { color: var(--accent); }
+.post-username {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-dim);
+}
 .post-time {
   font-size: 13px;
   color: var(--ink-dim);
@@ -985,6 +1027,18 @@ tbody tr:nth-child(3) .rank {
 }
 .privacy-toggle input { width: auto; margin: 0; cursor: pointer; accent-color: var(--accent); }
 .profile-settings .hint { margin: 8px 0 0; }
+.username-edit-form {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(42,40,35,0.08);
+}
+.username-edit-form label { margin-top: 0; }
+.username-edit-form button {
+  width: auto;
+  margin-top: 10px;
+  padding: 9px 18px;
+  font-size: 13px;
+}
 
 .best-efforts-grid {
   display: grid;
@@ -1161,6 +1215,7 @@ tbody tr:nth-child(3) .rank {
 
   form { padding: 22px; }
   .result-card { padding: 22px; }
+  .modal { padding: 22px; }
   .form-row { flex-direction: column; gap: 0; }
   .form-row .form-field:not(:first-child) label { margin-top: 20px; }
 

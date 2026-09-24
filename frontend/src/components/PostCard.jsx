@@ -155,6 +155,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
           <Link to={`/profile/${post.user_id}`} className="post-author">
             {post.user_name}
           </Link>
+          {post.user_username && <span className="post-username">@{post.user_username}</span>}
           <span className="post-time">
             · {timeAgo(post.created_at)}
             {post.edited_at && ' · edited'}
