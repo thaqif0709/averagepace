@@ -287,6 +287,15 @@ export async function fetchReviewQueue(token) {
   return res.json()
 }
 
+export async function fetchRecentlyVerified(token) {
+  const res = await fetch(`${API_URL}/api/admin/verified`, { headers: authHeaders(token) })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to load verified runs')
+  }
+  return res.json()
+}
+
 export async function verifyRun(token, runId) {
   const res = await fetch(`${API_URL}/api/admin/runs/${runId}/verify`, {
     method: 'POST',

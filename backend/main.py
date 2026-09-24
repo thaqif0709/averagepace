@@ -28,6 +28,7 @@ from database import (
     get_like_count,
     get_pending_follow_requests,
     get_posts_for_user,
+    get_recently_verified,
     get_review_queue,
     get_user_public,
     get_user_runs_by_distance,
@@ -450,6 +451,11 @@ def leaderboard(distance: str = "5k", tier: str = "all"):
 @app.get("/api/admin/review-queue")
 def admin_review_queue(current_admin: dict = Depends(get_current_admin_user)):
     return {"runs": get_review_queue()}
+
+
+@app.get("/api/admin/verified")
+def admin_verified_runs(current_admin: dict = Depends(get_current_admin_user)):
+    return {"runs": get_recently_verified()}
 
 
 @app.post("/api/admin/runs/{run_id}/verify")

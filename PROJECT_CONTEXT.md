@@ -178,15 +178,21 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   actually checked the link. `users.is_admin` (bootstrapped from the
   `ADMIN_EMAILS` env var, comma-separated, matched at every `init_db()` run
   - there's no in-app way to grant it) gates `/admin` (`AdminReviewPage.jsx`)
-  and three endpoints: `GET /api/admin/review-queue` (every run with a
+  and four endpoints, all behind `get_current_admin_user` in `auth.py`
+  (403s a non-admin): `GET /api/admin/review-queue` (every run with a
   `result_url` and no `verified_by_admin_id` yet, oldest first),
+  `GET /api/admin/verified` (the 20 most recently verified, newest first),
   `POST /api/admin/runs/{id}/verify` (sets `tier='green'`,
   `verified_by_admin_id`, `verified_at`), and `.../unverify` (reverts to
-  yellow - a safety valve with no frontend button yet, in case of a
-  mis-click). `get_current_admin_user` in `auth.py` (403s a non-admin) gates
-  all three. A migration downgrades any pre-existing automated-green run to
-  yellow the first time this runs, since none of those were actually
-  admin-checked.
+  yellow). The page shows both lists - a "Review queue" table with a Verify
+  button per row, and a "Recently verified" table below it with an Undo
+  button that calls unverify - so a mis-click has an immediate, visible way
+  back rather than only a reachable-by-curl safety valve. Both tables share
+  one `RunRow`/`RunTable` component in `AdminReviewPage.jsx`; verifying or
+  undoing moves the run between the two lists' local state directly rather
+  than re-fetching either endpoint. A migration downgrades any pre-existing
+  automated-green run to yellow the first time this runs, since none of
+  those were actually admin-checked.
 - **Vouches** (`vouches` table, `user_id`+`run_id` primary key) — social
   proof, deliberately kept separate from trust scoring rather than feeding
   into the tier/score, so a run's tier stays an objective signal and vouching

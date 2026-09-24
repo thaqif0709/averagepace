@@ -651,6 +651,23 @@ def get_review_queue():
         conn.close()
 
 
+def get_recently_verified(limit=20):
+    """Runs an admin has verified, most recently first - lets a mistaken
+    verification be found and undone."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT * FROM runs
+                WHERE verified_by_admin_id IS NOT NULL
+                ORDER BY verified_at DESC
+                LIMIT %s
+            """, (limit,))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
 def verify_run(run_id, admin_id):
     """Marks a run as checked by an admin - the only way a run becomes green."""
     conn = get_conn()
