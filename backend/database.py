@@ -125,6 +125,21 @@ def init_db():
             # Optional date the race itself happened, distinct from created_at
             # (when it was logged here) - lets someone log a run after the fact.
             cur.execute("ALTER TABLE runs ADD COLUMN IF NOT EXISTS event_date DATE")
+            # Admin verification, replacing "green = automated check passed" -
+            # green now only ever comes from an admin actually checking the
+            # link. A no-op if these are already there.
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE")
+            cur.execute("ALTER TABLE runs ADD COLUMN IF NOT EXISTS verified_by_admin_id INTEGER REFERENCES users(id)")
+            cur.execute("ALTER TABLE runs ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ")
+            # Anything that reached green the old way (automated GPS analysis)
+            # wasn't actually admin-checked, so it's downgraded to yellow -
+            # a no-op once every green row has a real verified_by_admin_id.
+            cur.execute("UPDATE runs SET tier = 'yellow' WHERE tier = 'green' AND verified_by_admin_id IS NULL")
+            # Bootstrap whoever's email is listed here as an admin, so there's
+            # someone who can use the review queue. Safe to re-run.
+            admin_emails = [e.strip() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()]
+            if admin_emails:
+                cur.execute("UPDATE users SET is_admin = TRUE WHERE email = ANY(%s)", (admin_emails,))
         conn.commit()
     finally:
         conn.close()
@@ -141,7 +156,7 @@ def upsert_user(google_sub, email, name, avatar_url):
                     email = EXCLUDED.email,
                     name = EXCLUDED.name,
                     avatar_url = EXCLUDED.avatar_url
-                RETURNING id, google_sub, email, name, avatar_url
+                RETURNING id, google_sub, email, name, avatar_url, is_admin
             """, (google_sub, email, name, avatar_url))
             user = cur.fetchone()
         conn.commit()
@@ -155,7 +170,7 @@ def get_user_by_id(user_id):
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, google_sub, email, name, avatar_url, is_private FROM users WHERE id = %s",
+                "SELECT id, google_sub, email, name, avatar_url, is_private, is_admin FROM users WHERE id = %s",
                 (user_id,),
             )
             return cur.fetchone()
@@ -614,6 +629,59 @@ def get_user_runs_by_distance(user_id, distance_bucket):
                 ORDER BY runs.duration_s ASC, runs.id ASC
             """, (user_id, distance_bucket))
             return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def get_review_queue():
+    """Runs backed by a result link that no admin has verified yet, oldest
+    first so nothing sits forever. A linked run is always 'yellow' by
+    construction (see trust_score.py), so no separate tier filter is needed."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT * FROM runs
+                WHERE result_url IS NOT NULL AND verified_by_admin_id IS NULL
+                ORDER BY created_at ASC
+                LIMIT 200
+            """)
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def verify_run(run_id, admin_id):
+    """Marks a run as checked by an admin - the only way a run becomes green."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                UPDATE runs SET tier = 'green', verified_by_admin_id = %s, verified_at = NOW()
+                WHERE id = %s
+                RETURNING id, tier, verified_by_admin_id, verified_at
+            """, (admin_id, run_id))
+            updated = cur.fetchone()
+        conn.commit()
+        return updated
+    finally:
+        conn.close()
+
+
+def unverify_run(run_id):
+    """Reverts a mistaken verification back to yellow - still has a link,
+    just no longer admin-confirmed."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                UPDATE runs SET tier = 'yellow', verified_by_admin_id = NULL, verified_at = NULL
+                WHERE id = %s
+                RETURNING id, tier, verified_by_admin_id, verified_at
+            """, (run_id,))
+            updated = cur.fetchone()
+        conn.commit()
+        return updated
     finally:
         conn.close()
 

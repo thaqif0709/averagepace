@@ -672,6 +672,13 @@ tbody tr:nth-child(3) .rank {
   color: var(--ink-dim);
 }
 
+.review-actions-cell button {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
 .running-loader {
   display: flex;
   flex-direction: column;

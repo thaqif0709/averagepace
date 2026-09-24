@@ -277,3 +277,36 @@ export async function unlikePost(postId, token) {
   if (!res.ok) throw new Error('Failed to unlike')
   return res.json()
 }
+
+export async function fetchReviewQueue(token) {
+  const res = await fetch(`${API_URL}/api/admin/review-queue`, { headers: authHeaders(token) })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to load review queue')
+  }
+  return res.json()
+}
+
+export async function verifyRun(token, runId) {
+  const res = await fetch(`${API_URL}/api/admin/runs/${runId}/verify`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to verify')
+  }
+  return res.json()
+}
+
+export async function unverifyRun(token, runId) {
+  const res = await fetch(`${API_URL}/api/admin/runs/${runId}/unverify`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to unverify')
+  }
+  return res.json()
+}

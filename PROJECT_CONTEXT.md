@@ -151,11 +151,14 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   anyone checking the linked result know which figure to compare against.
   Shown as a small pill next to the time everywhere a run appears (feed,
   profile, leaderboard, the post-submit result card).
-- **Trust scoring** (`backend/trust_score.py`) — three paths to a tier:
+- **Trust scoring** (`backend/trust_score.py`) — three paths to an automated
+  score/tier, capped at yellow (see "Admin verification" below for how a run
+  actually reaches green):
   1. GPX file (API-only right now) → automated: five checks (GPS speed
      jumps, pace-floor plausibility, claimed-vs-GPS distance mismatch,
-     elevation sanity, duplicate-file detection via SHA-256 hash) → green/
-     yellow/red by score.
+     elevation sanity, duplicate-file detection via SHA-256 hash) → yellow/
+     red by score (`score >= 50` is yellow, capped there - no automated path
+     reaches green).
   2. Manual entry + an official result link (`result_url` on `runs`) →
      always yellow/score 60, via `linked_result()`. Not machine-verified -
      deliberately so, since checking it server-side would mean scraping
@@ -167,9 +170,23 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      shown as a citation on the entry (leaderboard, feed, profile) for any
      human to click through and check.
   3. Manual entry, no link → always red/score 0, via `unverified_result()`.
-- **Trust tiers** — green (85+, high trust, GPX-verified) / yellow (50-84,
-  either GPX-plausible-but-flagged or link-backed) / red (<50, no evidence at
-  all) — shown immediately with specific flags raised
+- **Trust tiers** — green (admin-verified, see below) / yellow (either
+  GPX-plausible-but-flagged or link-backed, not yet reviewed) / red (no
+  evidence at all) — shown immediately with specific flags raised
+- **Admin verification** — green used to mean "our own automated GPS
+  analysis was confident" (score >= 85); it now means a human on our side
+  actually checked the link. `users.is_admin` (bootstrapped from the
+  `ADMIN_EMAILS` env var, comma-separated, matched at every `init_db()` run
+  - there's no in-app way to grant it) gates `/admin` (`AdminReviewPage.jsx`)
+  and three endpoints: `GET /api/admin/review-queue` (every run with a
+  `result_url` and no `verified_by_admin_id` yet, oldest first),
+  `POST /api/admin/runs/{id}/verify` (sets `tier='green'`,
+  `verified_by_admin_id`, `verified_at`), and `.../unverify` (reverts to
+  yellow - a safety valve with no frontend button yet, in case of a
+  mis-click). `get_current_admin_user` in `auth.py` (403s a non-admin) gates
+  all three. A migration downgrades any pre-existing automated-green run to
+  yellow the first time this runs, since none of those were actually
+  admin-checked.
 - **Vouches** (`vouches` table, `user_id`+`run_id` primary key) — social
   proof, deliberately kept separate from trust scoring rather than feeding
   into the tier/score, so a run's tier stays an objective signal and vouching
@@ -337,23 +354,35 @@ from the frontend fails with a generic "Failed to fetch" (bitten by this
 twice — always curl an OPTIONS preflight to confirm before assuming the
 frontend/backend code itself is broken).
 
+`ADMIN_EMAILS` on Render (comma-separated) is what makes someone an admin -
+applied inside `init_db()`, which runs once at process start, so it only
+takes effect for an email that already has a user row (i.e. has signed in
+at least once) as of the *next* deploy/restart after the env var is set or
+changed.
+
 ## Files
 
 ```
 backend/
-  main.py              — FastAPI app + routes (health, auth, upload, leaderboard, feed, posts, users/follow)
+  main.py              — FastAPI app + routes (health, auth, upload, leaderboard, feed, posts,
+                           users/follow, admin review queue)
   auth.py               — Google ID token verification, session JWT issue/verify,
-                           get_current_user (required) / get_current_user_optional (public-but-auth-aware)
-  trust_score.py        — GPX analysis (green/yellow/red), linked_result() (official-link
-                           submissions, always yellow), unverified_result() (bare claims, red)
-  database.py           — Postgres schema + queries (runs incl. result_url, users, follows
+                           get_current_user (required) / get_current_user_optional
+                           (public-but-auth-aware) / get_current_admin_user (403s non-admins)
+  trust_score.py        — GPX analysis (yellow/red, capped - green is admin-only now),
+                           linked_result() (official-link submissions, always yellow),
+                           unverified_result() (bare claims, red)
+  database.py           — Postgres schema + queries (runs incl. result_url and
+                           verified_by_admin_id/verified_at, users incl. is_admin, follows
                            w/ pending/accepted status, posts)
   requirements.txt
-  .env.example           — DATABASE_URL, CORS_ORIGINS, GOOGLE_CLIENT_ID, SESSION_SECRET
+  .env.example           — DATABASE_URL, CORS_ORIGINS, GOOGLE_CLIENT_ID, SESSION_SECRET,
+                           ADMIN_EMAILS
 frontend/
   src/
     main.jsx             — React entry point, router + AuthProvider setup
-    App.jsx               — top nav (Home/Submit/Leaderboard/Profile+sign-out) + route table
+    App.jsx               — top nav (Home/Submit/Leaderboard/Profile/Admin-if-admin+sign-out)
+                             + route table
     auth.jsx              — AuthContext: token/user state, localStorage persistence
     api.js                — fetch wrapper for the backend API
     format.js              — duration/pace parsing + formatting, live time-input auto-format
@@ -372,6 +401,8 @@ frontend/
                                  privacy toggle and follow-requests inbox
                                  (also exports ProfileRedirect for bare `/profile`)
       FollowListPage.jsx       — `/profile/:userId/followers` and `/following`
+      AdminReviewPage.jsx       — `/admin`, gated on `user.is_admin` (backend still enforces
+                                 it independently); review queue + a Verify button per run
   index.html             — loads the Google Identity Services script
   package.json
   vite.config.js

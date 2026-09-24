@@ -46,9 +46,9 @@ export default function LeaderboardPage() {
       <p className="eyebrow">Finish-line board</p>
       <h1>{distanceLabel} leaderboard</h1>
       <p className="lede">
-        Green means an automated GPS check passed. Yellow means it's backed by
-        an official result link — click through to check it yourself. Red is
-        a bare, unverified claim.
+        Green means our team checked the result link and confirmed it. Yellow
+        means it's backed by an official result link — click through to check
+        it yourself. Red is a bare, unverified claim.
       </p>
 
       <div className="filters">

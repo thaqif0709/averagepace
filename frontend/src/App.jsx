@@ -8,6 +8,7 @@ import LeaderboardPage from './pages/LeaderboardPage.jsx'
 import ProfilePage, { ProfileRedirect } from './pages/ProfilePage.jsx'
 import FollowListPage from './pages/FollowListPage.jsx'
 import BestEffortDetailPage from './pages/BestEffortDetailPage.jsx'
+import AdminReviewPage from './pages/AdminReviewPage.jsx'
 
 export default function App() {
   const { user, loading, logout } = useAuth()
@@ -47,6 +48,7 @@ export default function App() {
           <NavLink to="/submit">Submit a run</NavLink>
           <NavLink to="/leaderboard">Leaderboard</NavLink>
           {!loading && user && <NavLink to="/profile">Profile</NavLink>}
+          {!loading && user?.is_admin && <NavLink to="/admin">Admin</NavLink>}
           {!loading && user && (
             <button type="button" className="link-button" onClick={logout}>
               Sign out
@@ -73,6 +75,7 @@ export default function App() {
           <NavLink to="/submit" onClick={closeMenu}>Submit a run</NavLink>
           <NavLink to="/leaderboard" onClick={closeMenu}>Leaderboard</NavLink>
           {!loading && user && <NavLink to="/profile" onClick={closeMenu}>Profile</NavLink>}
+          {!loading && user?.is_admin && <NavLink to="/admin" onClick={closeMenu}>Admin</NavLink>}
           <div className="mobile-menu-divider" />
           {!loading && user && (
             <button type="button" className="link-button" onClick={() => { closeMenu(); logout() }}>
@@ -94,6 +97,7 @@ export default function App() {
         <Route path="/profile/:userId/best/:distanceBucket" element={<BestEffortDetailPage />} />
         <Route path="/profile/:userId/followers" element={<FollowListPage mode="followers" />} />
         <Route path="/profile/:userId/following" element={<FollowListPage mode="following" />} />
+        <Route path="/admin" element={<AdminReviewPage />} />
       </Routes>
     </>
   )

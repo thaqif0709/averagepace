@@ -9,7 +9,7 @@ load_dotenv()
 from fastapi import Body, Depends, FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
-from auth import get_current_user, get_current_user_optional, issue_session_token, verify_google_credential
+from auth import get_current_admin_user, get_current_user, get_current_user_optional, issue_session_token, verify_google_credential
 from database import (
     accept_follow_request,
     can_view_private_content,
@@ -28,6 +28,7 @@ from database import (
     get_like_count,
     get_pending_follow_requests,
     get_posts_for_user,
+    get_review_queue,
     get_user_public,
     get_user_runs_by_distance,
     get_vouch_count,
@@ -38,10 +39,12 @@ from database import (
     suggest_event_names,
     unfollow_user,
     unlike_post,
+    unverify_run,
     unvouch_for_run,
     update_post,
     update_run_metadata,
     upsert_user,
+    verify_run,
     vouch_for_run,
 )
 from trust_score import analyze_gpx_bytes, linked_result, unverified_result
@@ -442,3 +445,24 @@ def leaderboard(distance: str = "5k", tier: str = "all"):
         "tier": tier,
         "distance_labels": DISTANCE_LABELS,
     }
+
+
+@app.get("/api/admin/review-queue")
+def admin_review_queue(current_admin: dict = Depends(get_current_admin_user)):
+    return {"runs": get_review_queue()}
+
+
+@app.post("/api/admin/runs/{run_id}/verify")
+def admin_verify_run(run_id: int, current_admin: dict = Depends(get_current_admin_user)):
+    updated = verify_run(run_id, current_admin["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return updated
+
+
+@app.post("/api/admin/runs/{run_id}/unverify")
+def admin_unverify_run(run_id: int, current_admin: dict = Depends(get_current_admin_user)):
+    updated = unverify_run(run_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return updated

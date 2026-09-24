@@ -169,12 +169,9 @@ def analyze_gpx_bytes(gpx_bytes, claimed_distance_km=None):
 
     score = max(0, min(100, round(score)))
 
-    if score >= 85:
-        tier = "green"
-    elif score >= 50:
-        tier = "yellow"
-    else:
-        tier = "red"
+    # Green is reserved for admin-verified runs (see main.py's /api/admin
+    # endpoints) - an automated check, however clean, tops out at yellow.
+    tier = "yellow" if score >= 50 else "red"
 
     result["score"] = score
     result["tier"] = tier
