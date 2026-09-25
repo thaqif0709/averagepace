@@ -215,7 +215,14 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     via a CSS keyframe keyed on `distanceLabel`, and that one does respect
     reduced-motion normally. `aria-hidden` on the whole widget since it's
     decorative and auto-updating, redundant with accessible text elsewhere
-    on the page.
+    on the page. The meta line forces `white-space: nowrap` +
+    `text-overflow: ellipsis` rather than letting it wrap - some
+    distance/holder/year combinations are longer than others (e.g. "Women's
+    Half Marathon · Letesenbet Gidey · 2021"), and at mobile widths a
+    wrapping one grew the whole card every time the ticker cycled to it.
+    Truncating keeps the card's height constant across every record instead;
+    the rare long one loses its trailing year to an ellipsis, which is a
+    fine trade against the card visibly resizing every few seconds.
   - **Activity marquee** (`ActivityMarquee.jsx`, logged-out only, full-bleed
     above the hero, outside `.wrap`) — a horizontally-scrolling strip styled
     like an old orange dot-matrix LED sign (DotGothic16 - a genuine

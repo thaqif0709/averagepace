@@ -445,6 +445,14 @@ h2 {
   font-size: 14px;
   color: var(--ink-dim);
   animation: wr-fade 0.5s var(--ease);
+  /* Some distance/holder/year combos are longer than others (e.g. "Women's
+     Half Marathon · Letesenbet Gidey · 2021") and would wrap to a second
+     line at mobile widths, growing the whole card every time the ticker
+     cycled to them. Force one line and truncate instead, so the card's
+     height never changes as it cycles. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 @keyframes wr-fade {
   from { opacity: 0; }
