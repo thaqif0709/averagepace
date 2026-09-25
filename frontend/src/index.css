@@ -308,6 +308,85 @@ body {
 }
 .modal h2 { margin: 0 0 12px; }
 .modal .lede { margin-bottom: 24px; }
+
+.share-modal { max-width: 560px; }
+.share-card-preview {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-md);
+  /* Checkerboard so a genuinely transparent export is visibly transparent
+     in the preview too, not just "looks dark" by coincidence. */
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  background-color: #e8e8e8;
+}
+.share-card { max-width: 100%; }
+.share-card-panel {
+  padding: 32px 28px;
+  border-radius: var(--radius-lg);
+  background: rgba(18,16,14,0.82);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+  text-align: center;
+}
+.share-card-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #E3B34D;
+  border: 1px solid rgba(227,179,77,0.4);
+  border-radius: var(--radius-pill);
+  padding: 4px 14px;
+  margin-bottom: 18px;
+}
+.share-card-time {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #FAF8F4;
+}
+.share-card-pace {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #E3B34D;
+  margin-top: 10px;
+}
+.share-card-event {
+  font-size: 13px;
+  color: rgba(250,248,244,0.55);
+  margin-top: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.share-card-brand {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: rgba(250,248,244,0.4);
+  margin-top: 22px;
+}
+.share-card-brand span { color: #E3B34D; }
+.share-modal-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.share-modal-actions button { width: auto; flex: 1; }
 .username-status {
   font-size: 13px;
   margin: 8px 0 0;
@@ -1050,6 +1129,20 @@ tbody tr:nth-child(3) .rank {
   text-decoration: none;
 }
 .post-result-link:hover { text-decoration: underline; }
+.post-share-link {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.post-share-link:hover { text-decoration: underline; }
 .post-activity .time-cell { color: var(--ink); font-size: 15px; }
 
 .post-activity-trailing {

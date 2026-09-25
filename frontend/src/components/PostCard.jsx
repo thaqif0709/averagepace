@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx'
 import { updatePost, deleteRun, deletePost, vouchForRun, unvouchForRun, likePost, unlikePost } from '../api.js'
 import { formatDuration, formatEventDate, formatPace, todayLocalISO } from '../format.js'
 import ExternalLinkIcon from './ExternalLinkIcon.jsx'
+import ShareResultCard from './ShareResultCard.jsx'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
 
@@ -38,6 +39,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
   const [liking, setLiking] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
+  const [sharing, setSharing] = useState(false)
 
   const isOwn = user && user.id === post.user_id
 
@@ -314,6 +316,9 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
                   <ExternalLinkIcon />
                 </a>
               )}
+              <button type="button" className="post-share-link" onClick={() => setSharing(true)}>
+                Share
+              </button>
               {user && !isOwn ? (
                 <button
                   type="button"
@@ -349,6 +354,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
           )}
         </div>
       </div>
+      {sharing && <ShareResultCard run={post} onClose={() => setSharing(false)} />}
     </article>
   )
 }

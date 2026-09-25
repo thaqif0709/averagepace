@@ -381,6 +381,35 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   pill (`PostCard.jsx`, own `.like-button` CSS mirroring `.vouch-button`) for
   other signed-in viewers, a plain "N like(s)" readout for the poster's own
   view and logged-out visitors.
+- **Share result card** (`ShareResultCard.jsx`, a "Share" text button next to
+  "Official result" on any run-attached post) — a growth feature, not a
+  social one: runners already post race results to their own Instagram/
+  WhatsApp, so this gives them a nicer-looking, on-brand image to post
+  instead of a plain screenshot, with an AveragePace wordmark riding along
+  into their network for free. Renders a small rounded "sticker" (distance
+  badge, big time, pace, event name, wordmark) on a semi-opaque dark panel
+  over a genuinely transparent PNG canvas - the transparency is the point,
+  since the intended use is dropping it on top of your own race-day photo in
+  an Instagram Story rather than posting it standalone. A modal preview
+  (`.share-card-preview`, checkerboard background so real transparency is
+  visibly confirmed before download, not just assumed) offers "Share" (Web
+  Share API with a `File`, when `navigator.canShare` supports it - mobile
+  only in practice) alongside a "Download image" fallback everywhere else.
+  Built client-side with `html-to-image` (`toPng`) rather than a backend
+  renderer - no server dependency, and the card's own CSS is the only source
+  of truth for what it looks like. Passing an explicit `width` to `toPng`
+  keeps the exported file at full resolution (1440px @ pixelRatio 3 off a
+  480px card) even when the on-screen preview itself has shrunk to fit a
+  phone screen. One real bug caught by testing this against actual
+  production data rather than just eyeballing the code: `html-to-image`'s
+  default font-embedding step walks every stylesheet on the page looking for
+  `@font-face` rules to inline, including the cross-origin Google Fonts
+  stylesheet - reading a cross-origin sheet's `cssRules` throws a
+  `SecurityError` and aborts the export entirely, in every real browser, for
+  every user. Fixed with `skipFonts: true`: the capture rasterizes inside
+  the same page that already has the font active, so skipping the
+  embed-for-portability step (which nothing here needs, since the SVG never
+  leaves this page) sidesteps the crash with no visible difference in output.
 - **Best efforts** (`GET /api/users/{username}/best-efforts`) — each runner's
   fastest submission per distance bucket, one row via
   `ROW_NUMBER() OVER (PARTITION BY distance_bucket ORDER BY duration_s ASC)`
