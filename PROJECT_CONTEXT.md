@@ -561,8 +561,17 @@ Free tier, three services (see `DEPLOY.md` for the from-scratch setup):
 
 - **Frontend** — Netlify, `https://averagepace.netlify.app`
 - **Backend** — Render, `https://averagepace-api.onrender.com` (free plan
-  sleeps after 15 min idle; first request after that takes ~30-50s)
-- **Database** — Neon Postgres
+  sleeps after 15 min idle; first request after that takes ~30-50s). Kept
+  warm by `.github/workflows/keep-alive.yml`, a scheduled GitHub Action
+  (`*/10 * * * *`, well inside the 15-min window) that curls `/api/health`.
+  Chose a GitHub Action over Render's own Cron Job service since it's free
+  regardless of plan/usage, versioned with the code, and doesn't depend on
+  any one chat session staying alive; also runnable on demand via
+  `workflow_dispatch`. Neon's own autosuspend (below) still applies
+  independently, but wakes in ~1-2s so it's not the one worth ping-guarding.
+- **Database** — Neon Postgres (autoscaling, autosuspends after a few
+  minutes idle - fast to resume, not the source of the noticeable cold
+  start above)
 
 `CORS_ORIGINS` on Render must match the Netlify URL exactly or every fetch
 from the frontend fails with a generic "Failed to fetch" (bitten by this
