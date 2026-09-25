@@ -387,17 +387,31 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   WhatsApp, so this gives them a nicer-looking, on-brand image to post
   instead of a plain screenshot, with an AveragePace wordmark riding along
   into their network for free. Renders a small "sticker" (distance badge,
-  big time, pace, event name, wordmark) with no backing panel at all -
-  floating directly on a genuinely transparent PNG canvas, legible against
-  arbitrary photos via a layered `text-shadow` (soft ambient + a tighter
-  contact shadow) instead of a solid fill, since the intended use is
-  dropping it on top of your own race-day photo in an Instagram Story
-  rather than posting it standalone; an opaque panel would have covered the
-  photo it's meant to sit on. (An earlier version *did* put it on a dark
-  panel - first-round feedback was to cut that, drop the "PACE" label so
-  it's just the pace value, shrink the action buttons, and trim the dialog
-  copy down to a single "Share this result" heading with no explanatory
-  paragraph.) A modal preview (`.share-card-preview`, checkerboard
+  big time, pace, event name, wordmark) on a genuinely transparent PNG
+  canvas, since the intended use is dropping it on top of your own race-day
+  photo in an Instagram Story rather than posting it standalone. Went
+  through two rounds of visual feedback on exactly how "transparent" that
+  should look:
+  1. First cut had a solid-ish dark panel (`rgba(18,16,14,0.82)`) - cut
+     entirely per feedback in favor of floating text directly on the
+     transparent canvas with a layered `text-shadow` for contrast instead,
+     plus dropping the "PACE" label (just the pace value), shrinking the
+     action buttons, and trimming the dialog copy to a single "Share this
+     result" heading with no explanatory paragraph.
+  2. That fully-transparent version then read as *too* washed out - next
+     round asked for the background "darkened" back and the text's drop
+     shadow removed. Landed on `.share-card-panel { background:
+     rgba(10,8,8,0.45) }` - real but translucent (a photo underneath still
+     visibly shows through, confirmed by compositing an export over a
+     synthetic photo-like background in testing rather than judging by eye
+     on a flat backdrop, which made a 45%-alpha fill look misleadingly
+     solid), dark enough on its own to carry the text's contrast so the
+     shadow became redundant. Also swapped the accent color from amber to a
+     brighter Tyrian purple (`#C6107A` - the same ~325° hue as the site's
+     own `--accent` wordmark color, `#66023C`, just lifted from L=20% to
+     L=42% for a pop against the dark panel rather than picking an
+     unrelated color).
+  A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when
   `navigator.canShare` supports it - mobile only in practice) alongside a
