@@ -1489,14 +1489,15 @@ tbody tr:nth-child(3) .rank {
   td.runner-cell::before { content: none; }
 
   /* Best-effort detail table only (.run-actions-cell is unique to it): keep
-     the entry's ⋮ menu on the same line as Time instead of its own row. */
+     the entry's ⋮ menu on the same line as the rank/date row instead of its
+     own row at the bottom. */
   tr:has(.run-actions-cell) {
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-areas:
-      "rank rank"
+      "rank actions"
       "event event"
-      "time actions"
+      "time time"
       "pace pace"
       "trust trust";
     column-gap: 8px;
@@ -1510,5 +1511,8 @@ tbody tr:nth-child(3) .rank {
     grid-area: actions;
     align-self: center;
     width: auto;
+    padding: 0 0 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(42,40,35,0.08);
   }
 }

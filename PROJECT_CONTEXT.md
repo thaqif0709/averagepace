@@ -414,20 +414,24 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     card-ification (`table,tbody,tr,td { display:block }` + `data-label`
     pseudo-labels, shared with the leaderboard) turned into its own
     full-width row at the bottom of the mobile card, under Trust. Moved it
-    onto the same line as Time on mobile specifically, since that's where a
-    row's primary actions read most naturally. Done with a CSS-only,
-    mobile-only rule scoped by `tr:has(.run-actions-cell)` - a selector only
-    this table's rows match (`.run-actions-cell` isn't used anywhere else,
-    confirmed via a repo-wide grep), so the leaderboard and admin-review
-    tables that share the same base card CSS are untouched. Inside that
-    scope, the `<tr>` becomes a `display: grid` with two columns
-    (`1fr auto`) and named `grid-template-areas` giving Rank/Event/Pace/
-    Trust each their own full-width row like before, but placing Time and
-    the actions cell into the *same* row, side by side - no JSX/DOM changes,
-    so desktop's plain table layout (already one line per row by definition)
-    is untouched, verified via a standalone Playwright repro at 320/375/414px
-    (menu inline with Time, right-aligned, no overlap even with a long event
-    name wrapping to two lines above it) and 700px (identical to before).
+    onto the same line as the rank/date row on mobile specifically (the
+    card's first line, e.g. "① 23/09/2026 ⋮"), matching where the analogous
+    per-item menu sits on post cards. Done with a CSS-only, mobile-only rule
+    scoped by `tr:has(.run-actions-cell)` - a selector only this table's
+    rows match (`.run-actions-cell` isn't used anywhere else, confirmed via
+    a repo-wide grep), so the leaderboard and admin-review tables that share
+    the same base card CSS are untouched. Inside that scope, the `<tr>`
+    becomes a `display: grid` with two columns (`1fr auto`) and named
+    `grid-template-areas` pairing the rank cell with the actions cell in one
+    row while Event/Time/Pace/Trust keep their own full-width rows below;
+    the actions cell also picks up the rank cell's divider styling
+    (border-bottom/margin/padding) so the underline still spans the full
+    row instead of stopping under the date. No JSX/DOM changes, so
+    desktop's plain table layout (already one line per row by definition)
+    is untouched - verified via a standalone Playwright repro at
+    320/375/414px (menu inline with the rank/date row, divider intact, no
+    overlap even with a long event name wrapping to two lines below it) and
+    700px (identical to before).
 - **Event names** (`event_name` on `runs`, free text, optional, 200 char cap)
   — typed in on `/submit`, no separate events table. As you type, `GET
   /api/events/suggest?q=` (`suggest_event_names()`) autocompletes against
