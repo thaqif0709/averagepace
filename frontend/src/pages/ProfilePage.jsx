@@ -347,7 +347,7 @@ export default function ProfilePage() {
                 <div className="best-effort-time">{formatDuration(be.duration_s)}</div>
                 <div className="best-effort-meta">
                   <span className={`tier-dot ${be.tier}`}></span>
-                  {formatPace(be.pace_sec_per_km)}
+                  <span className="best-effort-pace">{formatPace(be.pace_sec_per_km)}</span>
                   {be.time_type && <span className="time-type-tag">{be.time_type}</span>}
                 </div>
                 {(be.event_name || be.event_date) && (

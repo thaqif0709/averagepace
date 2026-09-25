@@ -385,6 +385,29 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   submission at that one distance, fastest first - reuses the leaderboard's
   `<table>`/`data-label` markup so it gets the same mobile card layout for
   free.
+  - Each card's meta row (`.best-effort-meta`, a flex row: tier-dot + pace +
+    optional CHIP/GUN `.time-type-tag` pill) had a bug where the tier-dot
+    rendered as a full circle on some cards but only a thin sliver on
+    others (reported: visible on 5K, clipped on Half Marathon/Marathon).
+    Root cause: `.tier-dot` had no `flex-shrink`, and being an empty
+    `<span>` its content-based minimum width is 0, so whenever the row's
+    content (dot + pace + tag) didn't fit the card, flexbox shrank the dot
+    - the only child with room to give - down toward 0 width while its
+    fixed 8px height stayed put, turning the circle into a vertical
+    sliver. The 1-character difference between "GUN" and "CHIP" was enough
+    to push some cards over the threshold and not others, matching the
+    reported pattern exactly (confirmed via a standalone Playwright repro
+    sweeping container widths before touching any CSS). Fixed by giving
+    both fixed-size decorations (`.tier-dot`, `.time-type-tag`) explicit
+    `flex-shrink: 0` so neither ever deforms, and wrapping the pace text in
+    its own `.best-effort-pace` span with `min-width: 0` +
+    `overflow/text-overflow/white-space` ellipsis so *it* is the one
+    element that gracefully truncates under real space pressure - the same
+    technique already used for `.best-effort-event` and `.wr-ticker-meta`.
+    Verified the dot stays a perfect 8x8 circle from the grid's normal
+    range down to its absolute minimum card width (140px), where the pace
+    text truncates instead of the dot deforming or the row overflowing the
+    card.
 - **Event names** (`event_name` on `runs`, free text, optional, 200 char cap)
   — typed in on `/submit`, no separate events table. As you type, `GET
   /api/events/suggest?q=` (`suggest_event_names()`) autocompletes against
