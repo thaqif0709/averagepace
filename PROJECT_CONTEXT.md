@@ -216,6 +216,23 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     reduced-motion normally. `aria-hidden` on the whole widget since it's
     decorative and auto-updating, redundant with accessible text elsewhere
     on the page.
+  - **Activity marquee** (`ActivityMarquee.jsx`, logged-out only, full-bleed
+    above the hero, outside `.wrap`) — a horizontally-scrolling strip styled
+    like an old orange dot-matrix LED sign (DotGothic16 - a genuine
+    dot-matrix Google Font - in amber on near-black, `text-shadow` glow to
+    sell the lit-LED look). Content comes from the same `posts` feed
+    `HomePage.jsx` already fetches, no separate request: scored runs
+    (`post.run_id` present) become lines like "ALICE JUST LOGGED A 5K —
+    22:14"; if there are fewer than 4 of those, it pads out with static
+    value-prop fallback lines so the strip never loops on 1-2 thin
+    messages. Loops seamlessly by rendering the joined message string
+    twice back to back and animating `translateX` by exactly -50% of the
+    track's own width. Unlike the world-record ticker, the scroll *is* the
+    only way to read messages past the first screenful, so reduced-motion
+    doesn't ignore it (that'd be right for decoration, wrong here) - it
+    stops the animation at its resting position instead, showing the start
+    of the content fully readable rather than a random frozen mid-scroll
+    fragment.
   - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),
