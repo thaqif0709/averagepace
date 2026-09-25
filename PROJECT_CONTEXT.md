@@ -161,13 +161,28 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     `?scope=`), a composer for text posts when signed in. "Everyone" only
     ever shows posts from public accounts. Logged-out visitors see a
     mission-statement hero instead of the bare feed: the problem (official
-    times scattered across a different results site per race), the pitch
-    (paste the link, log the time, one running history), the Strava jab
-    (best-effort history sits behind a paywall there; it doesn't here), and
-    a 3-step "how it works" before the public feed continues below as
-    social proof. Swapped in purely on `!loading && !user` in
-    `HomePage.jsx` - logged-in users see the same feed as always, no new
-    route.
+    times scattered across a different results site per race), a world
+    record ticker (see below), the pitch (paste the link, log the time, one
+    running history), the Strava jab (best-effort history sits behind a
+    paywall there; it doesn't here), and a 3-step "how it works" before the
+    public feed continues below as social proof. Swapped in purely on
+    `!loading && !user` in `HomePage.jsx` - logged-in users see the same
+    feed as always, no new route.
+  - **World record ticker** (`WorldRecordTicker.jsx`, logged-out hero only)
+    — a 6-digit `HH:MM:SS` readout that auto-advances every 2.8s through the
+    men's world records for the same 4 distances the app itself tracks (5K,
+    10K, half, marathon; data in `frontend/src/data/worldRecords.js`, each
+    entry `{ distanceLabel, digits, holder, year }` - hand-maintained, no
+    live data source, update it whenever a record falls). Each digit is its
+    own `1ch`-wide `overflow:hidden` box; changing a digit remounts it via a
+    React `key` so a CSS keyframe (`wr-flip`) replays and slides the new
+    value up into place - digits that don't change between two records
+    don't animate, same as a real split-flap/odometer display. The meta
+    line (distance/holder/year) crossfades the same way, keyed on
+    `distanceLabel`. `aria-hidden` on the whole widget since it's decorative
+    and auto-updating, redundant with accessible text elsewhere on the
+    page; the global `prefers-reduced-motion` rule already collapses the
+    flip/fade to instant for anyone who asked for that.
   - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),

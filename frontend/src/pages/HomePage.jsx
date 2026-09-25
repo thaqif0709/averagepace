@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import PostCard from '../components/PostCard.jsx'
 import RunningLoader from '../components/RunningLoader.jsx'
+import WorldRecordTicker from '../components/WorldRecordTicker.jsx'
 import { createTextPost, fetchFeed } from '../api.js'
 
 export default function HomePage() {
@@ -89,6 +90,7 @@ export default function HomePage() {
           <section className="hero">
             <p className="eyebrow">Race results, consolidated</p>
             <h1>All your race results.<br />One place. No paywall.</h1>
+            <WorldRecordTicker />
             <p className="lede">
               Official times live scattered across a different results site
               for every race — one for the marathon, another for last
