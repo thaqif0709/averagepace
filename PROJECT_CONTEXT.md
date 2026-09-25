@@ -526,6 +526,29 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
       result" itself is only ~169px wide against a 416px-wide modal, so
       there's no realistic heading length here that would reach far enough
       right to collide - reverting to the plain `.modal` padding is safe).
+  11. Extended to the Best Efforts drill-down history table
+      (`BestEffortDetailPage.jsx`) as well - previously "Share" only lived
+      next to "Official result" on a feed/profile post. Added as the first
+      item inside that table's existing owner-only ⋮ menu
+      (`.post-menu-dropdown`, the same menu documented under "Best efforts"
+      below), ahead of Edit/Delete, rather than as its own separate button -
+      keeps the row's already-cramped trailing cell from growing another
+      control, and matches the "tuck secondary actions behind the menu"
+      pattern the menu already exists for. Surfaced a latent bug in doing
+      so: this table's `<tr>` can only legally contain `<td>`/`<th>`
+      children (an HTML nesting rule, not a React one), so rendering
+      `ShareResultCard`'s modal `<div>` as a `<tr>` sibling - valid at every
+      other call site so far - is invalid markup there that browsers
+      silently reparent rather than something React itself warns about.
+      Fixed at the component level, not the call site: `ShareResultCard`
+      now renders via `createPortal(..., document.body)`, so its DOM
+      placement no longer depends on where it's referenced in the tree - the
+      more robust default for a modal generally (escaping an ancestor's
+      overflow/stacking context is already the norm elsewhere in the app),
+      not just a one-off workaround for this call site. Verified via
+      Playwright that the rendered `.modal-overlay`'s DOM parent is
+      `<body>`, not nested inside the `<table>`, and that the menu now
+      reads `['Share', 'Edit', 'Delete']` in that order.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when
@@ -614,6 +637,27 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     320/375/414px (menu inline with the rank/date row, divider intact, no
     overlap even with a long event name wrapping to two lines below it) and
     700px (identical to before).
+  - On that same mobile card layout, the Time cell's value (duration +
+    optional GUN/CHIP `.time-type-tag` pill) visually read as centered in
+    its cell rather than sitting flush against the pill, an odd imbalance
+    next to every other cell's value, which hugs the right edge. Root
+    cause: the shared mobile card CSS turns each `<td>` into a flex row
+    (`justify-content: space-between`) between its `::before` label
+    pseudo-element and the cell's content, so the label lands on the left
+    and the content on the right - but this cell's "content" was actually
+    two separate flex items (a bare duration text node, then the tag
+    `<span>`, both direct children of the `<td>`), so `space-between`
+    spread all three items - label, duration, tag - evenly across the row
+    instead of label-vs-(duration+tag). Fixed by wrapping the duration text
+    and the tag span in one shared `<span className="time-cell-value">`,
+    collapsing them into a single flex item that now hugs the cell's right
+    edge as a unit (verified: 0.0px gap between the value and the cell's
+    right edge at 390px, on both this page and the leaderboard). Applied
+    the identical fix to the leaderboard's Time cell
+    (`LeaderboardPage.jsx`) too, since it shares the exact same markup
+    pattern and the exact same bug, even though only this page's version
+    was reported; desktop's plain table layout is unaffected on both pages
+    since the flex rule is scoped to the sub-600px card breakpoint.
 - **Event names** (`event_name` on `runs`, free text, optional, 200 char cap)
   — typed in on `/submit`, no separate events table. As you type, `GET
   /api/events/suggest?q=` (`suggest_event_names()`) autocompletes against

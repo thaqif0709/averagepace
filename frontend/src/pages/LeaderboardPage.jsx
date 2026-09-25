@@ -99,8 +99,10 @@ export default function LeaderboardPage() {
                   <span>{row.runner_name}</span>
                 </td>
                 <td className="time-cell" data-label="Time">
-                  {formatDuration(row.duration_s)}
-                  {row.time_type && <span className="time-type-tag">{row.time_type}</span>}
+                  <span className="time-cell-value">
+                    {formatDuration(row.duration_s)}
+                    {row.time_type && <span className="time-type-tag">{row.time_type}</span>}
+                  </span>
                 </td>
                 <td data-label="Pace">{formatPace(row.pace_sec_per_km)}</td>
                 <td data-label="Trust">

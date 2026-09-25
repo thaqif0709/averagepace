@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { toPng } from 'html-to-image'
 import { formatDuration, formatPace, formatEventDate } from '../format.js'
 
@@ -115,7 +116,14 @@ export default function ShareResultCard({ run, onClose }) {
     }
   }
 
-  return (
+  // Portalled to <body> rather than rendered in place: a caller might be a
+  // table row (BestEffortDetailPage.jsx's history table only allows <td>
+  // children of a <tr> - a modal <div> sibling there is invalid HTML that
+  // browsers silently relocate), and even where that's not an issue, a
+  // modal escaping its ancestors' stacking/overflow context is the
+  // standard, robust default rather than something every call site has to
+  // get right on its own.
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal share-modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="modal-close-x" onClick={onClose} aria-label="Close">
@@ -163,6 +171,7 @@ export default function ShareResultCard({ run, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

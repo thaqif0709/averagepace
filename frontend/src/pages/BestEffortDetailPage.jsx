@@ -5,6 +5,7 @@ import { fetchUserRunsByDistance, updateRunMetadata, deleteRun } from '../api.js
 import { formatDuration, formatEventDate, formatPace, todayLocalISO } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 import RunningLoader from '../components/RunningLoader.jsx'
+import ShareResultCard from '../components/ShareResultCard.jsx'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
 
@@ -20,6 +21,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
   const [deleting, setDeleting] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -203,8 +205,10 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
         )}
       </td>
       <td className="time-cell" data-label="Time">
-        {formatDuration(run.duration_s)}
-        {run.time_type && <span className="time-type-tag">{run.time_type}</span>}
+        <span className="time-cell-value">
+          {formatDuration(run.duration_s)}
+          {run.time_type && <span className="time-type-tag">{run.time_type}</span>}
+        </span>
       </td>
       <td data-label="Pace">{formatPace(run.pace_sec_per_km)}</td>
       <td data-label="Trust">
@@ -241,6 +245,9 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
             </button>
             {menuOpen && (
               <div className="post-menu-dropdown">
+                <button type="button" onClick={() => { setMenuOpen(false); setSharing(true) }}>
+                  Share
+                </button>
                 <button type="button" onClick={startEdit}>
                   Edit
                 </button>
@@ -252,6 +259,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
           </div>
         )}
       </td>
+      {sharing && <ShareResultCard run={run} onClose={() => setSharing(false)} />}
     </tr>
   )
 }
