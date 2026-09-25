@@ -240,7 +240,14 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     win the cascade on purpose: it redeclares the full `animation` shorthand
     on `.activity-marquee-track` with `!important`, which beats the global
     rule's `!important` on `*` because a class selector is more specific
-    than the universal one.
+    than the universal one. Scroll speed is a fixed 48px/s, not a fixed
+    duration - the padding above means the track's real length varies a
+    lot (short fallback-only list vs. 8 real messages), and a hardcoded
+    duration made the padded version scroll noticeably faster than before
+    the padding existed. A `useLayoutEffect` measures the rendered track's
+    actual width once mounted and sets `--marquee-duration` (read by both
+    the normal and reduced-motion `animation` rules) to `width / 48`, so it
+    runs before the first paint - no flash of the wrong speed.
   - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),

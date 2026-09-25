@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { formatDuration } from '../format.js'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'HALF MARATHON', marathon: 'MARATHON' }
@@ -22,7 +22,12 @@ const MAX_REAL_MESSAGES = 8
 // so this pads with an estimate generous enough for wide/ultrawide
 // monitors rather than just typical widths.
 const MIN_TRACK_CHARS = 450
-const SEPARATOR = '   •   '
+const SEPARATOR = '   •   '
+// Fixed scroll speed rather than a fixed duration - the padding above
+// means the track's actual length varies a lot (a short fallback-only
+// list vs. 8 real messages), and a fixed duration made the padded (longer)
+// version scroll noticeably faster than before.
+const PIXELS_PER_SECOND = 48
 
 function activityMessage(post) {
   const distance = DISTANCE_LABELS[post.distance_bucket] ?? post.distance_bucket.toUpperCase()
@@ -31,12 +36,12 @@ function activityMessage(post) {
 }
 
 export default function ActivityMarquee({ posts }) {
+  const trackRef = useRef(null)
+
   const messages = useMemo(() => {
     const real = posts.filter((p) => p.run_id).slice(0, MAX_REAL_MESSAGES).map(activityMessage)
     return real.length >= MIN_REAL_MESSAGES ? real : [...real, ...FALLBACK_MESSAGES]
   }, [posts])
-
-  if (messages.length === 0) return null
 
   let padded = messages
   while (padded.join(SEPARATOR).length < MIN_TRACK_CHARS) {
@@ -44,9 +49,19 @@ export default function ActivityMarquee({ posts }) {
   }
   const track = padded.join(SEPARATOR) + SEPARATOR
 
+  // Runs before paint so the correct speed applies from the first frame,
+  // not just after a visible jump once this measures.
+  useLayoutEffect(() => {
+    if (!trackRef.current) return
+    const oneCopyWidth = trackRef.current.scrollWidth / 2
+    trackRef.current.style.setProperty('--marquee-duration', `${oneCopyWidth / PIXELS_PER_SECOND}s`)
+  }, [track])
+
+  if (messages.length === 0) return null
+
   return (
     <div className="activity-marquee" aria-hidden="true">
-      <div className="activity-marquee-track">
+      <div className="activity-marquee-track" ref={trackRef}>
         <span>{track}</span>
         <span>{track}</span>
       </div>
