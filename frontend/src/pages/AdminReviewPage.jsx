@@ -4,6 +4,7 @@ import { fetchRecentlyVerified, fetchReviewQueue, unverifyRun, verifyRun } from 
 import { formatDuration, formatEventDate } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 import RunningLoader from '../components/RunningLoader.jsx'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 
 function RunRow({ run, actionLabel, onAction, busy }) {
   return (
@@ -70,6 +71,8 @@ export default function AdminReviewPage() {
   const [error, setError] = useState(null)
   const [actingId, setActingId] = useState(null)
   const isAdmin = Boolean(user?.is_admin)
+
+  useDocumentMeta({ title: 'Admin', noindex: true })
 
   useEffect(() => {
     if (authLoading || !isAdmin) {

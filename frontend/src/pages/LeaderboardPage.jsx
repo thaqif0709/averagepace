@@ -4,6 +4,7 @@ import { fetchLeaderboard } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 import RunningLoader from '../components/RunningLoader.jsx'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 
 const DISTANCES = [
   ['5k', '5K'],
@@ -40,6 +41,11 @@ export default function LeaderboardPage() {
   }, [distance, tier])
 
   const distanceLabel = DISTANCES.find(([key]) => key === distance)?.[1] ?? distance
+
+  useDocumentMeta({
+    title: `${distanceLabel} Leaderboard`,
+    description: `See the fastest verified ${distanceLabel} times on AvgPace, ranked by trust tier - from official chip times to community-vouched results.`,
+  })
 
   return (
     <div className="wrap wide">

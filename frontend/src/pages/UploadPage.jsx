@@ -4,6 +4,7 @@ import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { submitRun, fetchEventSuggestions } from '../api.js'
 import { autoFormatDurationInput, formatDuration, formatEventDate, formatPace, parseDuration, todayLocalISO } from '../format.js'
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 
 const DISTANCE_PRESETS = [
   ['5', '5K'],
@@ -13,6 +14,11 @@ const DISTANCE_PRESETS = [
 ]
 
 export default function UploadPage() {
+  useDocumentMeta({
+    title: 'Submit a Race Result',
+    description: 'Log a 5K, 10K, half marathon or marathon time in seconds - no GPX file needed. Just enter your time or paste an official result link.',
+  })
+
   const { user, token, loading } = useAuth()
   const [claimedDistanceKm, setClaimedDistanceKm] = useState('')
   const [manualTime, setManualTime] = useState('')

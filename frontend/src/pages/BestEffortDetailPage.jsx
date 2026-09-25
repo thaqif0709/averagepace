@@ -6,6 +6,7 @@ import { formatDuration, formatEventDate, formatPace, todayLocalISO } from '../f
 import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
 import RunningLoader from '../components/RunningLoader.jsx'
 import ShareResultCard from '../components/ShareResultCard.jsx'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
 
@@ -305,6 +306,12 @@ export default function BestEffortDetailPage() {
 
   const distanceLabel = DISTANCE_LABELS[distanceBucket] ?? distanceBucket
   const isOwn = user?.username && user.username.toLowerCase() === username.toLowerCase()
+
+  useDocumentMeta({
+    title: `${username}'s ${distanceLabel} History`,
+    description: `Every ${distanceLabel} ${username} has logged on AvgPace, fastest first.`,
+    noindex: gated,
+  })
 
   return (
     <div className="wrap wide">

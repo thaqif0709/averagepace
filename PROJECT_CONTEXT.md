@@ -771,6 +771,69 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   post-build that all three files land in `dist/` and serve with correct
   `Content-Type` headers (`image/svg+xml`, `image/png`) via `vite preview`,
   not just that the build didn't error.
+- **SEO** (`useDocumentMeta.js` hook + `index.html` baseline tags +
+  `public/{robots.txt,sitemap.xml,og-image.png}`) — there was previously no
+  meta description, no Open Graph/Twitter tags, no sitemap or robots.txt,
+  and a single static `<title>` shared by every route. Asked generally
+  ("how do people do SEO?"), answered with the concrete gaps specific to
+  this app, then built on explicit go-ahead. Key constraint this had to be
+  designed around: this is a client-rendered SPA with no server-side
+  rendering, and a non-JS crawler or link-preview bot (every social/chat
+  unfurler - Twitter, WhatsApp, Slack, Discord, iMessage - none of them
+  execute JavaScript) only ever sees whatever's statically in `index.html`,
+  never anything set later by React. Google's own indexer is the one
+  crawler that *does* execute JS and re-reads the DOM after render, which
+  is what makes per-page dynamic tags worth doing at all here, but it also
+  means true per-page *social share previews* (e.g. a specific runner's
+  profile showing their own stats in a WhatsApp preview) aren't actually
+  achievable without server-side rendering for bots specifically - a
+  separate, bigger feature, not attempted here. Flagged this limitation
+  explicitly rather than silently shipping something that looks like it
+  covers social previews but doesn't.
+  - `index.html` carries the static baseline every bot and the initial
+    paint see: a real title/description, `robots: index, follow`, and
+    `og:*`/`twitter:*` tags including a purpose-built 1200x630 `og-image.png`
+    (the site's actual two-tone Space Mono wordmark on its cream background
+    - not the favicon's high-contrast purple-block treatment, which was
+    designed for 16px legibility, not a large share-card image; generated
+    once via a Playwright screenshot of an HTML page with the real Google
+    Fonts loaded, unlike the favicon which can't rely on webfonts loading
+    inside browser chrome). This baseline alone is a real improvement even
+    with nothing else: every shared AvgPace link now gets a correct, on-
+    brand preview instead of nothing/broken, everywhere non-JS bots look.
+  - `useDocumentMeta({ title, description, noindex })` (one `useEffect`,
+    called from each page) overwrites `document.title` and those same meta
+    tags by selector once data is available, composing page-specific titles
+    as `"{page title} — AvgPace"` (Home keeps its own full marketing title
+    rather than being suffixed). Wired into all 7 pages with content
+    specific to what's actually on each one - e.g. the leaderboard's title
+    tracks the selected distance (`"Marathon Leaderboard — AvgPace"`, not a
+    static "Leaderboard"), since that's genuinely different searchable
+    content per distance, not just a cosmetic label.
+  - `noindex` (renders `<meta name="robots" content="noindex, nofollow">`)
+    is set on: `/admin` (always - an admin queue has no business in search
+    results, and this was set unconditionally before the `isAdmin` branch
+    so it applies even to the "Not authorized" view a non-admin sees), a
+    private profile (`profile.is_private` - the content's already
+    follow-gated, no reason to also have the profile URL indexed), and
+    follower/following list pages (always - thin listings of avatar links,
+    not useful search-landing content regardless of privacy). Verified all
+    of this with mocked routes/auth per page: correct title+description on
+    every route, `index, follow` by default, `noindex, nofollow` on exactly
+    those three cases and nowhere else.
+  - `robots.txt` (`Disallow: /admin`, points to the sitemap) and
+    `sitemap.xml` cover the app's static routes (home, the 4 leaderboard
+    distances, submit) - called "basic" when proposed and kept that way
+    deliberately. A complete sitemap would also list every public user's
+    profile, which needs a backend endpoint to enumerate non-private
+    usernames and is a meaningfully bigger feature than what was asked for
+    ("a basic sitemap.xml"); noted as a natural follow-up rather than built
+    unprompted.
+  - No `<link rel="canonical">` tags - the leaderboard's query-string
+    variants (`?distance=&tier=`) make the "right" canonical URL per
+    combination genuinely ambiguous (e.g. does `?tier=green` canonicalize
+    to itself or to the untiered page?), and canonical tags weren't part of
+    what was asked for; skipped rather than guessed at.
 - **Loading state** (`RunningLoader.jsx`) — a small stopwatch Lottie
   animation (`src/assets/timer-loader.json`, recolored from its original
   black to the `--accent` brand color) rendered via `lottie-web`'s light
@@ -904,6 +967,7 @@ frontend/
     auth.jsx              — AuthContext: token/user state, localStorage persistence
     api.js                — fetch wrapper for the backend API
     format.js              — duration/pace parsing + formatting, live time-input auto-format
+    useDocumentMeta.js      — per-page <title>/meta description/OG/Twitter/robots hook
     index.css              — design system (light theme)
     components/
       GoogleSignInButton.jsx — wraps Google Identity Services' button
@@ -923,9 +987,11 @@ frontend/
       FollowListPage.jsx       — `/profile/:username/followers` and `/following`
       AdminReviewPage.jsx       — `/admin`, gated on `user.is_admin` (backend still enforces
                                  it independently); review queue + a Verify button per run
-  index.html             — loads the Google Identity Services script, favicon links
-  public/                 — favicon.svg/-32x32.png/apple-touch-icon.png (copied
-                           to the build root as-is, unlike src/assets/)
+  index.html             — loads the Google Identity Services script; favicon +
+                           static SEO/OG/Twitter meta tag baseline
+  public/                 — favicon.svg/-32x32.png/apple-touch-icon.png,
+                           og-image.png, robots.txt, sitemap.xml (copied to the
+                           build root as-is, unlike src/assets/)
   package.json
   vite.config.js
   .env.example           — VITE_API_URL, VITE_GOOGLE_CLIENT_ID

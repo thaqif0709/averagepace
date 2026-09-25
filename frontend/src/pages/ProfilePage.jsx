@@ -6,6 +6,7 @@ import RunningLoader from '../components/RunningLoader.jsx'
 import UsernameStatusMessage from '../components/UsernameStatusMessage.jsx'
 import { useUsernameStatus, isUsernameStatusSubmittable } from '../useUsernameStatus.js'
 import { formatDuration, formatEventDate, formatPace } from '../format.js'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 import {
   acceptFollowRequest,
   declineFollowRequest,
@@ -48,6 +49,14 @@ export default function ProfilePage() {
   const [usernameError, setUsernameError] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const usernameStatus = useUsernameStatus(usernameValue, token, profile?.username)
+
+  useDocumentMeta({
+    title: profile?.name,
+    description: profile
+      ? `View ${profile.name}'s verified race times and personal bests, from 5K to marathon, on AvgPace.`
+      : undefined,
+    noindex: profile?.is_private,
+  })
 
   useEffect(() => {
     if (authLoading) return

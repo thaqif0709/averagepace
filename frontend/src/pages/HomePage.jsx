@@ -7,8 +7,11 @@ import RunningLoader from '../components/RunningLoader.jsx'
 import WorldRecordTicker from '../components/WorldRecordTicker.jsx'
 import ActivityMarquee from '../components/ActivityMarquee.jsx'
 import { createTextPost, fetchFeed } from '../api.js'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 
 export default function HomePage() {
+  useDocumentMeta()
+
   const { user, token, loading } = useAuth()
   const [params] = useSearchParams()
   const requestedScope = params.get('scope') === 'following' ? 'following' : 'everyone'

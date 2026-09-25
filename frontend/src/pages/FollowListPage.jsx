@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import { fetchFollowers, fetchFollowing } from '../api.js'
 import RunningLoader from '../components/RunningLoader.jsx'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 
 export default function FollowListPage({ mode }) {
   const { username } = useParams()
@@ -11,6 +12,16 @@ export default function FollowListPage({ mode }) {
   const [gated, setGated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const title = mode === 'followers' ? 'Followers' : 'Following'
+
+  // Thin listing pages (just a grid of avatar links) aren't useful search
+  // landing pages even when the account is public, so always noindex.
+  useDocumentMeta({
+    title: `${username}'s ${title}`,
+    description: `People ${mode === 'followers' ? 'following' : 'followed by'} ${username} on AvgPace.`,
+    noindex: true,
+  })
 
   useEffect(() => {
     if (authLoading) return
@@ -35,8 +46,6 @@ export default function FollowListPage({ mode }) {
       cancelled = true
     }
   }, [username, mode, token, authLoading])
-
-  const title = mode === 'followers' ? 'Followers' : 'Following'
 
   return (
     <div className="wrap wide">
