@@ -3,9 +3,9 @@ import { formatDuration } from '../format.js'
 
 const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'HALF MARATHON', marathon: 'MARATHON' }
 
-// Shown alongside (or instead of, if there isn't much real activity yet)
-// actual recent runs, so the strip never looks thin or repeats one message
-// on a loop.
+// Shown instead of actual recent runs until enough different people have
+// logged something - a single user's runs looping past under their own
+// name on repeat reads more like a bug than real activity.
 const FALLBACK_MESSAGES = [
   'NO PAYWALL ON YOUR RUNNING HISTORY',
   'EVERY RESULT GETS A TRUST SCORE',
@@ -13,7 +13,10 @@ const FALLBACK_MESSAGES = [
   'YOUR DATA SHOULD BE FREE',
 ]
 
-const MIN_REAL_MESSAGES = 4
+// Gated on distinct users, not raw post count - a single prolific user's
+// runs would otherwise clear a post-count bar alone and loop their own name
+// on repeat, which reads more like a bug than real activity.
+const MIN_DISTINCT_USERS = 4
 const MAX_REAL_MESSAGES = 8
 // The loop trick below only looks seamless if one copy of the track is at
 // least as wide as the viewport - otherwise there's a gap of bare
@@ -48,8 +51,9 @@ export default function ActivityMarquee({ posts }) {
   const trackRef = useRef(null)
 
   const messages = useMemo(() => {
-    const real = posts.filter((p) => p.run_id).slice(0, MAX_REAL_MESSAGES).map(activityMessage)
-    return real.length >= MIN_REAL_MESSAGES ? real : [...real, ...FALLBACK_MESSAGES]
+    const real = posts.filter((p) => p.run_id).slice(0, MAX_REAL_MESSAGES)
+    const distinctUsers = new Set(real.map((p) => p.user_id)).size
+    return distinctUsers >= MIN_DISTINCT_USERS ? real.map(activityMessage) : FALLBACK_MESSAGES
   }, [posts])
 
   let padded = messages

@@ -230,9 +230,18 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     sell the lit-LED look). Content comes from the same `posts` feed
     `HomePage.jsx` already fetches, no separate request: scored runs
     (`post.run_id` present) become lines like "ALICE JUST LOGGED A 5K —
-    22:14"; if there are fewer than 4 of those, it pads out with static
-    value-prop fallback lines so the strip never loops on 1-2 thin
-    messages, AND repeats that message list as many times as needed to
+    22:14" - but only once at least `MIN_DISTINCT_USERS` (4) *different*
+    people show up in that batch; otherwise it shows the static value-prop
+    fallback lines instead, not a mix of the two. Originally gated on raw
+    post count, which broke exactly as you'd expect the first time it hit
+    production: one account's 5 test runs cleared the count bar alone and
+    the strip looped that one name over and over, reading like a bug rather
+    than a quiet-but-real site. Re-gated on `new Set(posts.map(p =>
+    p.user_id)).size` instead, and made the fallback a full replacement
+    below threshold rather than a supplement above it - a couple of real
+    messages padded out with generic lines still visibly loops the same
+    name, so there's no partial-credit state worth keeping. Once it does
+    clear the bar it repeats that message list as many times as needed to
     clear 450 characters before joining it into the track - the seamless
     -50% loop trick only works if one copy is at least as wide as the
     viewport, and a short message list comfortably fit within a single
