@@ -439,13 +439,31 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      was computed from - more specific and more accurate than a fixed
      per-bucket label, since real courses don't always run exactly 5.00/
      10.00/21.10/42.20km.
+  5. The "white" text (`share-card-time`, `-event`, `-brand`) was actually
+     `#FAF8F4` (the site's own warm-cream `--bg` token) - swapped for literal
+     `#FFFFFF`/`rgba(255,255,255,…)`, since on the dark preview panel the
+     off-white read as slightly muddy next to the request for clean white.
+  6. Dropped the explicit "Close" button - clicking the overlay already
+     dismisses the modal (`onClick={onClose}` on `.modal-overlay`, stopped
+     from bubbling by the inner `.modal`'s own `stopPropagation`), so a
+     dedicated button was redundant. Added a small `×` icon
+     (`.modal-close-x`) absolutely positioned in the top-left corner
+     instead. Needed `.share-modal`'s own `padding-top: 56px` (via a
+     `.modal.share-modal` two-class selector, not a plain `.share-modal`
+     one) to keep clear of the "Share this result" heading - a plain
+     `.share-modal { padding-top }` has the same specificity as, and
+     appears earlier than, the `@media (max-width: 640px) { .modal {
+     padding: 22px } }` reset further down the file, so at phone widths the
+     later rule was winning and collapsing the padding straight back down,
+     re-overlapping the × with the heading; verified by measuring the
+     actual bounding boxes at both 1280px and 390px; screenshots alone
+     looked fine at desktop width and only showed the overlap once
+     narrowed.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when
   `navigator.canShare` supports it - mobile only in practice) alongside a
-  "Download" fallback everywhere else; Close uses the same outline/`ghost`
-  treatment as Download-when-Share-exists, deliberately the least visually
-  prominent of the three actions. That fix also caught a real, unrelated
+  "Download" fallback everywhere else. That fix also caught a real, unrelated
   layout bug shared by every modal in the app: `.modal-overlay`'s z-index
   (40) was *below* the sticky `.topbar`'s (50), so a modal tall enough to
   reach the top of the viewport rendered partially behind the nav bar

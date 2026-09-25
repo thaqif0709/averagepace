@@ -86,6 +86,9 @@ export default function ShareResultCard({ run, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal share-modal" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="modal-close-x" onClick={onClose} aria-label="Close">
+          ×
+        </button>
         <h2>Share this result</h2>
 
         <div className="share-card-preview">
@@ -116,9 +119,6 @@ export default function ShareResultCard({ run, onClose }) {
           )}
           <button type="button" className={canShareFiles ? 'ghost' : ''} onClick={handleDownload} disabled={busy}>
             {busy ? 'Preparing…' : 'Download'}
-          </button>
-          <button type="button" className="ghost" onClick={onClose} disabled={busy}>
-            Close
           </button>
         </div>
       </div>

@@ -317,8 +317,34 @@ body {
 .modal h2 { margin: 0 0 12px; }
 .modal .lede { margin-bottom: 24px; }
 
-.share-modal { max-width: 480px; }
+.share-modal { max-width: 480px; position: relative; }
+/* Two-class selector so this beats the narrower @media (max-width: 640px)
+   .modal { padding: 22px } reset below on specificity, not source order -
+   otherwise the room made for .modal-close-x collapses back on mobile,
+   exactly where the button most needs it. */
+.modal.share-modal { padding-top: 56px; }
 .share-modal h2 { margin: 0 0 16px; }
+.modal-close-x {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-dim);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.modal-close-x:hover, .modal-close-x:focus-visible { background: var(--surface-2); color: var(--ink); filter: none; }
 .share-card-preview {
   display: flex;
   justify-content: center;
@@ -368,7 +394,7 @@ body {
   font-size: 52px;
   line-height: 1;
   letter-spacing: -0.02em;
-  color: #FAF8F4;
+  color: #FFFFFF;
 }
 .share-card-pace {
   font-family: var(--mono);
@@ -380,7 +406,7 @@ body {
 }
 .share-card-event {
   font-size: 13px;
-  color: rgba(250,248,244,0.85);
+  color: rgba(255,255,255,0.85);
   margin-top: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -391,7 +417,7 @@ body {
   font-weight: 700;
   font-size: 13px;
   letter-spacing: -0.01em;
-  color: rgba(250,248,244,0.7);
+  color: rgba(255,255,255,0.7);
   margin-top: 16px;
 }
 .share-card-brand span { color: #C6107A; }
