@@ -459,6 +459,15 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      actual bounding boxes at both 1280px and 390px; screenshots alone
      looked fine at desktop width and only showed the overlap once
      narrowed.
+  7. Pace value and the distance badge's text were also the Tyrian purple
+     accent - pace switched to pure white to match the time, and the badge
+     flipped from an outline (purple text/border, transparent fill) to a
+     filled pill (white text on a solid `#C6107A` background) rather than
+     just recoloring its text - a colored *label* reads better as a filled
+     chip than as colored outline text once there's more than one purple
+     element on the card. The "Pace" half of the `AveragePace` wordmark
+     stays purple - not mentioned in this round, and it's doing a different
+     job (brand mark, not a stat).
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when
