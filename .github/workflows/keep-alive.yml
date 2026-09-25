@@ -2,6 +2,7 @@ name: Keep backend warm
 
 on:
   schedule:
+    # Well inside Render's free-plan 15-min idle sleep window.
     - cron: '*/10 * * * *'
   workflow_dispatch: {}
 
