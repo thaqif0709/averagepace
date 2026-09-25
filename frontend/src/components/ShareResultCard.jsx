@@ -104,7 +104,7 @@ export default function ShareResultCard({ run, onClose }) {
                   {run.event_date && formatEventDate(run.event_date)}
                 </div>
               )}
-              <div className="share-card-brand">Average<span>Pace</span></div>
+              <div className="share-card-brand">Avg<span>Pace</span></div>
             </div>
           </div>
         </div>

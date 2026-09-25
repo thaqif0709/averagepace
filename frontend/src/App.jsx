@@ -49,7 +49,7 @@ export default function App() {
   return (
     <>
       <div className="topbar">
-        <Link to="/" className="wordmark">Average<span>Pace</span></Link>
+        <Link to="/" className="wordmark">Avg<span>Pace</span></Link>
         <div className="topbar-actions">
           <SearchWidget />
           <nav className="nav">

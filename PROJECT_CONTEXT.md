@@ -468,6 +468,16 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      element on the card. The "Pace" half of the `AveragePace` wordmark
      stays purple - not mentioned in this round, and it's doing a different
      job (brand mark, not a stat).
+  8. The wordmark itself shortened from "AveragePace" to "AvgPace" - but
+     only the two literal logo instances (`App.jsx`'s `.wordmark` in the
+     topbar, and this card's `.share-card-brand`), each still split
+     `Avg`/`Pace` across a plain-text run and the purple `<span>` so the
+     two-tone treatment carries over unchanged. Deliberately not a
+     find-and-replace: body copy that happens to say "AveragePace" (the
+     search placeholder, the admin-only notice, the "AveragePace pulls
+     them into a single..." line on the homepage) stays as full prose, per
+     an explicit "the copy should be fine" - only the two places that
+     function as *the logo* changed.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when
