@@ -77,19 +77,14 @@ export default function ShareResultCard({ run, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal share-modal" onClick={(e) => e.stopPropagation()}>
-        <p className="eyebrow">Share this result</p>
-        <h2>Looks good?</h2>
-        <p className="lede">
-          Transparent background - drop it on top of your own race photo in
-          Instagram Stories or wherever you post.
-        </p>
+        <h2>Share this result</h2>
 
         <div className="share-card-preview">
           <div className="share-card" ref={cardRef} style={{ width: CARD_WIDTH }}>
             <div className="share-card-panel">
               <span className="share-card-badge">{distance}</span>
               <div className="share-card-time">{formatDuration(run.duration_s)}</div>
-              <div className="share-card-pace">{formatPace(run.pace_sec_per_km)} PACE</div>
+              <div className="share-card-pace">{formatPace(run.pace_sec_per_km)}</div>
               {(run.event_name || run.event_date) && (
                 <div className="share-card-event">
                   {run.event_name}
@@ -111,7 +106,7 @@ export default function ShareResultCard({ run, onClose }) {
             </button>
           )}
           <button type="button" className={canShareFiles ? 'ghost' : ''} onClick={handleDownload} disabled={busy}>
-            {busy ? 'Preparing…' : 'Download image'}
+            {busy ? 'Preparing…' : 'Download'}
           </button>
           <button type="button" className="ghost" onClick={onClose} disabled={busy}>
             Close

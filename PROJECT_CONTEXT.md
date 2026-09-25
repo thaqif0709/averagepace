@@ -386,15 +386,32 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   social one: runners already post race results to their own Instagram/
   WhatsApp, so this gives them a nicer-looking, on-brand image to post
   instead of a plain screenshot, with an AveragePace wordmark riding along
-  into their network for free. Renders a small rounded "sticker" (distance
-  badge, big time, pace, event name, wordmark) on a semi-opaque dark panel
-  over a genuinely transparent PNG canvas - the transparency is the point,
-  since the intended use is dropping it on top of your own race-day photo in
-  an Instagram Story rather than posting it standalone. A modal preview
-  (`.share-card-preview`, checkerboard background so real transparency is
-  visibly confirmed before download, not just assumed) offers "Share" (Web
-  Share API with a `File`, when `navigator.canShare` supports it - mobile
-  only in practice) alongside a "Download image" fallback everywhere else.
+  into their network for free. Renders a small "sticker" (distance badge,
+  big time, pace, event name, wordmark) with no backing panel at all -
+  floating directly on a genuinely transparent PNG canvas, legible against
+  arbitrary photos via a layered `text-shadow` (soft ambient + a tighter
+  contact shadow) instead of a solid fill, since the intended use is
+  dropping it on top of your own race-day photo in an Instagram Story
+  rather than posting it standalone; an opaque panel would have covered the
+  photo it's meant to sit on. (An earlier version *did* put it on a dark
+  panel - first-round feedback was to cut that, drop the "PACE" label so
+  it's just the pace value, shrink the action buttons, and trim the dialog
+  copy down to a single "Share this result" heading with no explanatory
+  paragraph.) A modal preview (`.share-card-preview`, checkerboard
+  background so real transparency is visibly confirmed before download, not
+  just assumed) offers "Share" (Web Share API with a `File`, when
+  `navigator.canShare` supports it - mobile only in practice) alongside a
+  "Download" fallback everywhere else; Close uses the same outline/`ghost`
+  treatment as Download-when-Share-exists, deliberately the least visually
+  prominent of the three actions. That fix also caught a real, unrelated
+  layout bug shared by every modal in the app: `.modal-overlay`'s z-index
+  (40) was *below* the sticky `.topbar`'s (50), so a modal tall enough to
+  reach the top of the viewport rendered partially behind the nav bar
+  instead of over it, rather than just needing a bit more clearance from it.
+  Fixed by raising `.modal-overlay` to z-index 61 (above both the topbar and
+  the mobile-menu dropdown's 60) and giving `.modal` a
+  `max-height: calc(100vh - 48px)` + `overflow-y: auto` safety net so no
+  future modal's content can ever grow tall enough to revisit the problem.
   Built client-side with `html-to-image` (`toPng`) rather than a backend
   renderer - no server dependency, and the card's own CSS is the only source
   of truth for what it looks like. Passing an explicit `width` to `toPng`
