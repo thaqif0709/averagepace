@@ -408,6 +408,26 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     range down to its absolute minimum card width (140px), where the pace
     text truncates instead of the dot deforming or the row overflowing the
     card.
+  - On the drill-down table (`BestEffortDetailPage.jsx`), each row's ⋮ entry
+    menu (`.run-actions-cell`, edit/delete for `isOwn` viewers) sat in its
+    own trailing table column on desktop, which the `max-width: 600px`
+    card-ification (`table,tbody,tr,td { display:block }` + `data-label`
+    pseudo-labels, shared with the leaderboard) turned into its own
+    full-width row at the bottom of the mobile card, under Trust. Moved it
+    onto the same line as Time on mobile specifically, since that's where a
+    row's primary actions read most naturally. Done with a CSS-only,
+    mobile-only rule scoped by `tr:has(.run-actions-cell)` - a selector only
+    this table's rows match (`.run-actions-cell` isn't used anywhere else,
+    confirmed via a repo-wide grep), so the leaderboard and admin-review
+    tables that share the same base card CSS are untouched. Inside that
+    scope, the `<tr>` becomes a `display: grid` with two columns
+    (`1fr auto`) and named `grid-template-areas` giving Rank/Event/Pace/
+    Trust each their own full-width row like before, but placing Time and
+    the actions cell into the *same* row, side by side - no JSX/DOM changes,
+    so desktop's plain table layout (already one line per row by definition)
+    is untouched, verified via a standalone Playwright repro at 320/375/414px
+    (menu inline with Time, right-aligned, no overlap even with a long event
+    name wrapping to two lines above it) and 700px (identical to before).
 - **Event names** (`event_name` on `runs`, free text, optional, 200 char cap)
   — typed in on `/submit`, no separate events table. As you type, `GET
   /api/events/suggest?q=` (`suggest_event_names()`) autocompletes against

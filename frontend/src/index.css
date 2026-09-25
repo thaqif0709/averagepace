@@ -1487,4 +1487,28 @@ tbody tr:nth-child(3) .rank {
     font-size: 16px;
   }
   td.runner-cell::before { content: none; }
+
+  /* Best-effort detail table only (.run-actions-cell is unique to it): keep
+     the entry's ⋮ menu on the same line as Time instead of its own row. */
+  tr:has(.run-actions-cell) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "rank rank"
+      "event event"
+      "time actions"
+      "pace pace"
+      "trust trust";
+    column-gap: 8px;
+  }
+  tr:has(.run-actions-cell) td.runner-cell { grid-area: rank; }
+  tr:has(.run-actions-cell) td[data-label="Event"] { grid-area: event; }
+  tr:has(.run-actions-cell) td.time-cell { grid-area: time; }
+  tr:has(.run-actions-cell) td[data-label="Pace"] { grid-area: pace; }
+  tr:has(.run-actions-cell) td[data-label="Trust"] { grid-area: trust; }
+  tr:has(.run-actions-cell) td.run-actions-cell {
+    grid-area: actions;
+    align-self: center;
+    width: auto;
+  }
 }
