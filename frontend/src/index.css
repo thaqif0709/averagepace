@@ -390,18 +390,7 @@ h2 {
 .wr-digit-group { display: inline-flex; align-items: baseline; }
 .wr-digit {
   display: inline-block;
-  overflow: hidden;
-  position: relative;
   width: 1ch;
-  height: 1.1em;
-}
-.wr-digit-inner {
-  display: block;
-  animation: wr-flip 0.45s var(--ease);
-}
-@keyframes wr-flip {
-  from { transform: translateY(55%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
 }
 .wr-colon {
   padding: 0 2px;
@@ -417,6 +406,11 @@ h2 {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+/* The meta line's crossfade is decorative, so it respects the global
+   prefers-reduced-motion rule above as normal. The digit count itself is
+   driven by requestAnimationFrame in WorldRecordTicker.jsx, not CSS, so
+   that rule can't reach it anyway - deliberately, since counting through
+   the numbers is the whole point of the ticker. */
 
 .hero-actions {
   display: flex;

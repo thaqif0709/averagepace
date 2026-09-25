@@ -188,19 +188,27 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     feed as always, no new route.
   - **World record ticker** (`WorldRecordTicker.jsx`, logged-out hero only)
     — a 6-digit `HH:MM:SS` readout that auto-advances every 2.8s through the
-    men's world records for the same 4 distances the app itself tracks (5K,
-    10K, half, marathon; data in `frontend/src/data/worldRecords.js`, each
+    men's and women's world records for the same 4 distances the app itself
+    tracks (5K, 10K, half, marathon - 8 entries total, interleaved men's/
+    women's per distance; data in `frontend/src/data/worldRecords.js`, each
     entry `{ distanceLabel, digits, holder, year }` - hand-maintained, no
-    live data source, update it whenever a record falls). Each digit is its
-    own `1ch`-wide `overflow:hidden` box; changing a digit remounts it via a
-    React `key` so a CSS keyframe (`wr-flip`) replays and slides the new
-    value up into place - digits that don't change between two records
-    don't animate, same as a real split-flap/odometer display. The meta
-    line (distance/holder/year) crossfades the same way, keyed on
-    `distanceLabel`. `aria-hidden` on the whole widget since it's decorative
-    and auto-updating, redundant with accessible text elsewhere on the
-    page; the global `prefers-reduced-motion` rule already collapses the
-    flip/fade to instant for anyone who asked for that.
+    live data source, update it whenever a record falls; for the two road
+    distances we use the mixed-sex-race women's time rather than the
+    separate "women-only race" record, since that's the one usually meant
+    by "the world record"). Rather than swapping the digits instantly, the
+    clock actually counts from wherever it's currently sitting to the new
+    target - forward or backward, whichever direction gets there - over
+    1000ms with an ease-out curve, like a stopwatch/odometer physically
+    running through the seconds rather than a labeled value just changing.
+    That's driven by `requestAnimationFrame` interpolating total seconds
+    (not a CSS `animation`/`transition`), which was a deliberate choice: it
+    means `prefers-reduced-motion` can't reach it at all, same reasoning as
+    the loading spinner - the count *is* the feature, not decoration on top
+    of it. The meta line (distance/holder/year) below it still crossfades
+    via a CSS keyframe keyed on `distanceLabel`, and that one does respect
+    reduced-motion normally. `aria-hidden` on the whole widget since it's
+    decorative and auto-updating, redundant with accessible text elsewhere
+    on the page.
   - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),

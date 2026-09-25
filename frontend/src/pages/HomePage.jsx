@@ -95,9 +95,9 @@ export default function HomePage() {
               Official times live scattered across a different results site
               for every race — one for the marathon, another for last
               month's local 10K. AveragePace pulls them into a single
-              running history: paste the link, log the time, done. Strava
-              keeps your best-effort history behind a subscription. We
-              don't — your data should be free.
+              running history: paste the link, log the time, done. The
+              orange app keeps your best-effort history behind a
+              subscription. We don't — your data should be free.
             </p>
             <div className="hero-actions">
               <GoogleSignInButton />
