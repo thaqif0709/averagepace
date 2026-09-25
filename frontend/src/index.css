@@ -376,6 +376,7 @@ h2 {
   white-space: nowrap;
   padding: 9px 0;
   animation: activity-marquee-scroll 40s linear infinite;
+  will-change: transform;
 }
 .activity-marquee-track span {
   font-family: 'DotGothic16', var(--mono);

@@ -15,6 +15,13 @@ const FALLBACK_MESSAGES = [
 
 const MIN_REAL_MESSAGES = 4
 const MAX_REAL_MESSAGES = 8
+// The loop trick below only looks seamless if one copy of the track is at
+// least as wide as the viewport - otherwise there's a gap of bare
+// background visible partway through the scroll (looks like the strip
+// "goes black"). There's no reliable width to measure before first paint,
+// so this pads with an estimate generous enough for wide/ultrawide
+// monitors rather than just typical widths.
+const MIN_TRACK_CHARS = 450
 const SEPARATOR = '   •   '
 
 function activityMessage(post) {
@@ -31,7 +38,11 @@ export default function ActivityMarquee({ posts }) {
 
   if (messages.length === 0) return null
 
-  const track = messages.join(SEPARATOR) + SEPARATOR
+  let padded = messages
+  while (padded.join(SEPARATOR).length < MIN_TRACK_CHARS) {
+    padded = padded.concat(messages)
+  }
+  const track = padded.join(SEPARATOR) + SEPARATOR
 
   return (
     <div className="activity-marquee" aria-hidden="true">

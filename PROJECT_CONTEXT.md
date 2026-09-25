@@ -225,7 +225,13 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     (`post.run_id` present) become lines like "ALICE JUST LOGGED A 5K —
     22:14"; if there are fewer than 4 of those, it pads out with static
     value-prop fallback lines so the strip never loops on 1-2 thin
-    messages. Loops seamlessly by rendering the joined message string
+    messages, AND repeats that message list as many times as needed to
+    clear 450 characters before joining it into the track - the seamless
+    -50% loop trick only works if one copy is at least as wide as the
+    viewport, and a short message list comfortably fit within a single
+    copy's width on a wide/ultrawide monitor otherwise, leaving a visible
+    gap of bare background partway through the scroll (looked like the
+    strip "went black"). Loops seamlessly by rendering that padded string
     twice back to back and animating `translateX` by exactly -50% of the
     track's own width. Deliberately ignores `prefers-reduced-motion` (an
     explicit request), same as the world-record ticker - but since this one
