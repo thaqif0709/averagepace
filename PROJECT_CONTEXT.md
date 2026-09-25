@@ -956,6 +956,44 @@ Free tier, three services (see `DEPLOY.md` for the from-scratch setup):
   minutes idle - fast to resume, not the source of the noticeable cold
   start above)
 
+The keep-alive cron went completely dead for a while, caught only because
+the user happened to check the Actions tab and saw "0 workflow runs" -
+worth recording both what broke and the fix, since it's a real trap this
+project's own setup makes easy to fall into again:
+1. This whole project had been developed exclusively on the session branch
+   `claude/github-repo-creation-mb4imn` (the "Develop on this branch, never
+   push elsewhere without permission" instruction every session here gets)
+   for its entire history - no pull request had ever been opened, so
+   `main` (GitHub's default branch) sat frozen at an old scaffold, missing
+   the keep-alive workflow entirely. GitHub only ever evaluates a `schedule:`
+   trigger from the workflow file as it exists on the *default* branch, so
+   the cron had silently never fired even once, while `workflow_dispatch`
+   (the manual "Run workflow" button) worked fine and masked the gap -
+   production itself was never affected, since Netlify/Render both deploy
+   from a specifically-configured branch independent of GitHub's notion of
+   "default." Fixed by opening and merging a PR bringing `main` fully up to
+   date, then switching this session to work directly on `main` going
+   forward (per explicit user request) - which in turn required manually
+   updating both Render's "Branch" setting and Netlify's "Production
+   branch" setting in their dashboards, since neither's MCP tools expose a
+   way to change that, and both were still pointed at the old branch name.
+2. Even once `main` genuinely had the correct file, the schedule *still*
+   didn't fire for about 1.5 hours - longer than GitHub's documented
+   "occasional few minutes of delay under high load." Fixed by pushing a
+   trivial edit to `keep-alive.yml` itself (just added the comment above);
+   re-touching a workflow file is a known way to force GitHub to properly
+   re-register a "stuck" schedule, and it worked - a `schedule`-triggered
+   run appeared within ~5 minutes of that push. If this ever recurs, that's
+   the first thing to try again before assuming something's more seriously
+   broken.
+3. This same gap caused a second, related symptom: submitting `sitemap.xml`
+   to Google Search Console right after this initially came back "Couldn't
+   fetch" - almost certainly Google's fetcher hitting the Render backend
+   while it was cold (its own fetch timeout is well under the ~30-50s Render
+   cold-start takes), a direct consequence of the cron not yet reliably
+   keeping it warm. Confirmed by timing a request (1.1s, clearly warm) and
+   resubmitting right after - succeeded immediately, 7 pages discovered.
+
 `CORS_ORIGINS` on Render must match the Netlify URL exactly or every fetch
 from the frontend fails with a generic "Failed to fetch" (bitten by this
 twice — always curl an OPTIONS preflight to confirm before assuming the
