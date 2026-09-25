@@ -388,15 +388,14 @@ h2 {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
-/* Unlike the world-record ticker, the scroll here IS the content delivery
-   mechanism (there's no other way to read message 5 of 8), so freezing it
-   mid-scroll would just show a random cut-off fragment. Reduced motion
-   instead stops it at its resting position, showing the start of the
-   content fully readable and static rather than moving. */
+/* Deliberately ignores prefers-reduced-motion, same reasoning as the
+   world-record ticker: the scroll is the only way to read past the first
+   screenful, so it should keep moving rather than freeze mid-message.
+   Needs !important + the class's own specificity to beat the global
+   reduced-motion rule above, which also uses !important on `*`. */
 @media (prefers-reduced-motion: reduce) {
   .activity-marquee-track {
-    animation: none;
-    transform: translateX(0);
+    animation: activity-marquee-scroll 40s linear infinite !important;
   }
 }
 

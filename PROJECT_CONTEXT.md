@@ -227,12 +227,14 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     value-prop fallback lines so the strip never loops on 1-2 thin
     messages. Loops seamlessly by rendering the joined message string
     twice back to back and animating `translateX` by exactly -50% of the
-    track's own width. Unlike the world-record ticker, the scroll *is* the
-    only way to read messages past the first screenful, so reduced-motion
-    doesn't ignore it (that'd be right for decoration, wrong here) - it
-    stops the animation at its resting position instead, showing the start
-    of the content fully readable rather than a random frozen mid-scroll
-    fragment.
+    track's own width. Deliberately ignores `prefers-reduced-motion` (an
+    explicit request), same as the world-record ticker - but since this one
+    is a real CSS `animation` rather than `requestAnimationFrame`, the
+    global reduced-motion rule actually reaches it, so the override has to
+    win the cascade on purpose: it redeclares the full `animation` shorthand
+    on `.activity-marquee-track` with `!important`, which beats the global
+    rule's `!important` on `*` because a class selector is more specific
+    than the universal one.
   - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),
