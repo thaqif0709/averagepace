@@ -46,6 +46,7 @@ export default function ProfilePage() {
   const [usernameValue, setUsernameValue] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
   const [usernameError, setUsernameError] = useState(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const usernameStatus = useUsernameStatus(usernameValue, token, profile?.username)
 
   useEffect(() => {
@@ -261,9 +262,14 @@ export default function ProfilePage() {
             {profile.follow_status === 'none' && 'Follow'}
           </button>
         )}
+        {profile.is_self && (
+          <button type="button" className="follow-button" onClick={() => setSettingsOpen((v) => !v)}>
+            {settingsOpen ? 'Done' : 'Edit profile'}
+          </button>
+        )}
       </div>
 
-      {profile.is_self && (
+      {profile.is_self && settingsOpen && (
         <div className="profile-settings">
           <form onSubmit={handleSaveUsername} className="username-edit-form">
             <label htmlFor="profile_username">Username</label>
