@@ -316,9 +316,11 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
                   <ExternalLinkIcon />
                 </a>
               )}
-              <button type="button" className="post-share-link" onClick={() => setSharing(true)}>
-                Share
-              </button>
+              {isOwn && (
+                <button type="button" className="post-share-link" onClick={() => setSharing(true)}>
+                  Share
+                </button>
+              )}
               {user && !isOwn ? (
                 <button
                   type="button"

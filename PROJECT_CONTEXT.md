@@ -569,6 +569,23 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   13. That same hero lede's "the orange app" (an unnamed dig at the
       paywalled incumbent) now reads `the "orange app"`, quoted - a small
       punctuation tweak, no rationale beyond the explicit ask.
+  14. Real bug, caught by the user: `PostCard.jsx`'s own "Share" text button
+      (next to "Official result", separate from the drill-down table's ⋮-menu
+      one added in point 11) had no visibility gating at all - unlike the
+      Edit/Delete `.post-menu` two lines above it in the same render, which
+      is correctly wrapped in `{isOwn && ...}`. Every viewer of a run-attached
+      post could open the Share modal for it, logged in or not, owner or not
+      - reported as: logged out entirely, viewing their own public profile,
+      the Share button on their own post was still clickable (true, but also
+      not the full extent of it: it was equally clickable on *anyone's* post
+      by *anyone*, since nothing referenced `isOwn` or `user` at all). Fixed
+      by wrapping the button in `{isOwn && (...)}`, same as the adjacent
+      Edit/Delete menu - `isOwn` (`user && user.id === post.user_id`) is
+      already `false`/falsy whenever `user` is null, so this one change
+      covers both the logged-out case and the logged-in-as-someone-else
+      case. Verified with three mocked auth states against the same post on
+      the same profile: logged out -> 0 Share buttons rendered, logged in as
+      a different user -> 0, logged in as the post's own owner -> 1.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when
