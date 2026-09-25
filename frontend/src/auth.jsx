@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { fetchMe } from './api.js'
+import { clearUser, identifyUser, trackAuthEvent } from './analytics.js'
 
 const STORAGE_KEY = 'averagepace_token'
 const AuthContext = createContext(null)
@@ -33,20 +34,27 @@ export function AuthProvider({ children }) {
     }
   }, [token])
 
-  const login = useCallback((newToken, newUser) => {
+  const login = useCallback((newToken, newUser, isNewUser) => {
     localStorage.setItem(STORAGE_KEY, newToken)
     setToken(newToken)
     setUser(newUser)
+    identifyUser(newUser.id)
+    trackAuthEvent(isNewUser)
   }, [])
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY)
     setToken(null)
     setUser(null)
+    clearUser()
+  }, [])
+
+  const updateUser = useCallback((patch) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev))
   }, [])
 
   return (
-    <AuthContext.Provider value={{ token, user, loading, login, logout }}>
+    <AuthContext.Provider value={{ token, user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

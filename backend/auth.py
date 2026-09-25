@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
@@ -51,3 +51,9 @@ def get_current_user_optional(authorization: str = Header(None)):
     except jwt.PyJWTError:
         return None
     return get_user_by_id(payload["user_id"])
+
+
+def get_current_admin_user(current_user: dict = Depends(get_current_user)):
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user

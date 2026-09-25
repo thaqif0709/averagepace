@@ -2,14 +2,26 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import { fetchFollowers, fetchFollowing } from '../api.js'
+import RunningLoader from '../components/RunningLoader.jsx'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 
 export default function FollowListPage({ mode }) {
-  const { userId } = useParams()
+  const { username } = useParams()
   const { token, loading: authLoading } = useAuth()
   const [users, setUsers] = useState([])
   const [gated, setGated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const title = mode === 'followers' ? 'Followers' : 'Following'
+
+  // Thin listing pages (just a grid of avatar links) aren't useful search
+  // landing pages even when the account is public, so always noindex.
+  useDocumentMeta({
+    title: `${username}'s ${title}`,
+    description: `People ${mode === 'followers' ? 'following' : 'followed by'} ${username} on AvgPace.`,
+    noindex: true,
+  })
 
   useEffect(() => {
     if (authLoading) return
@@ -17,7 +29,7 @@ export default function FollowListPage({ mode }) {
     setLoading(true)
     setError(null)
     const fetcher = mode === 'followers' ? fetchFollowers : fetchFollowing
-    fetcher(userId, token)
+    fetcher(username, token)
       .then((data) => {
         if (!cancelled) {
           setUsers(data.users)
@@ -33,9 +45,7 @@ export default function FollowListPage({ mode }) {
     return () => {
       cancelled = true
     }
-  }, [userId, mode, token, authLoading])
-
-  const title = mode === 'followers' ? 'Followers' : 'Following'
+  }, [username, mode, token, authLoading])
 
   return (
     <div className="wrap wide">
@@ -43,6 +53,7 @@ export default function FollowListPage({ mode }) {
       <h1>{title}</h1>
 
       {error && <div className="banner err">{error}</div>}
+      {loading && <RunningLoader />}
       {!loading && !error && gated && (
         <div className="empty-state">This account is private. Follow to see their {title.toLowerCase()}.</div>
       )}
@@ -52,7 +63,7 @@ export default function FollowListPage({ mode }) {
       {!gated && users.length > 0 && (
         <div className="user-list">
           {users.map((u) => (
-            <Link key={u.id} to={`/profile/${u.id}`} className="user-list-row">
+            <Link key={u.id} to={`/profile/${u.username}`} className="user-list-row">
               {u.avatar_url ? (
                 <img src={u.avatar_url} alt="" />
               ) : (

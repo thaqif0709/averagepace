@@ -2,48 +2,77 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import PostCard from '../components/PostCard.jsx'
+import RunningLoader from '../components/RunningLoader.jsx'
+import UsernameStatusMessage from '../components/UsernameStatusMessage.jsx'
+import { useUsernameStatus, isUsernameStatusSubmittable } from '../useUsernameStatus.js'
+import { formatDuration, formatEventDate, formatPace } from '../format.js'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 import {
   acceptFollowRequest,
   declineFollowRequest,
+  fetchBestEfforts,
   fetchFollowRequests,
   fetchUserPosts,
   fetchUserProfile,
   followUser,
+  setUsername as saveUsername,
   unfollowUser,
   updatePrivacy,
 } from '../api.js'
+
+const DISTANCE_ORDER = ['5k', '10k', 'half', 'marathon']
+const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'Half Marathon', marathon: 'Marathon' }
 
 export function ProfileRedirect() {
   const { user, loading } = useAuth()
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
-  return <Navigate to={`/profile/${user.id}`} replace />
+  if (!user.username) return <Navigate to="/" replace />
+  return <Navigate to={`/profile/${user.username}`} replace />
 }
 
 export default function ProfilePage() {
-  const { userId } = useParams()
-  const { user: viewer, token, loading: authLoading } = useAuth()
+  const { username } = useParams()
+  const { user: viewer, token, loading: authLoading, updateUser } = useAuth()
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
   const [postsGated, setPostsGated] = useState(false)
+  const [bestEfforts, setBestEfforts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [followBusy, setFollowBusy] = useState(false)
   const [privacyBusy, setPrivacyBusy] = useState(false)
   const [requests, setRequests] = useState([])
   const [busyRequestId, setBusyRequestId] = useState(null)
+  const [usernameValue, setUsernameValue] = useState('')
+  const [usernameSaving, setUsernameSaving] = useState(false)
+  const [usernameError, setUsernameError] = useState(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const usernameStatus = useUsernameStatus(usernameValue, token, profile?.username)
+
+  useDocumentMeta({
+    title: profile?.name,
+    description: profile
+      ? `View ${profile.name}'s verified race times and personal bests, from 5K to marathon, on AvgPace.`
+      : undefined,
+    noindex: profile?.is_private,
+  })
 
   useEffect(() => {
     if (authLoading) return
     let cancelled = false
     setLoading(true)
     setError(null)
-    Promise.all([fetchUserProfile(userId, token), fetchUserPosts(userId, token)])
-      .then(([profileData, postsData]) => {
+    Promise.all([fetchUserProfile(username, token), fetchUserPosts(username, token), fetchBestEfforts(username, token)])
+      .then(([profileData, postsData, bestEffortsData]) => {
         if (cancelled) return
         setProfile(profileData)
         setPosts(postsData.posts)
         setPostsGated(postsData.gated)
+        const sorted = [...bestEffortsData.best_efforts].sort(
+          (a, b) => DISTANCE_ORDER.indexOf(a.distance_bucket) - DISTANCE_ORDER.indexOf(b.distance_bucket)
+        )
+        setBestEfforts(sorted)
       })
       .catch((err) => {
         if (!cancelled) setError(err.message)
@@ -54,7 +83,11 @@ export default function ProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [userId, token, authLoading])
+  }, [username, token, authLoading])
+
+  useEffect(() => {
+    if (profile?.is_self) setUsernameValue(profile.username || '')
+  }, [profile?.is_self, profile?.username])
 
   useEffect(() => {
     if (!profile?.is_self) return
@@ -75,7 +108,7 @@ export default function ProfilePage() {
     setError(null)
     try {
       if (profile.follow_status === 'none') {
-        const { status } = await followUser(profile.id, token)
+        const { status } = await followUser(profile.username, token)
         setProfile({
           ...profile,
           follow_status: status,
@@ -83,7 +116,7 @@ export default function ProfilePage() {
         })
       } else {
         const wasAccepted = profile.follow_status === 'accepted'
-        await unfollowUser(profile.id, token)
+        await unfollowUser(profile.username, token)
         setProfile({
           ...profile,
           follow_status: 'none',
@@ -107,6 +140,25 @@ export default function ProfilePage() {
       setError(err.message)
     } finally {
       setPrivacyBusy(false)
+    }
+  }
+
+  async function handleSaveUsername(e) {
+    e.preventDefault()
+    if (!isUsernameStatusSubmittable(usernameStatus)) return
+    setUsernameSaving(true)
+    setUsernameError(null)
+    try {
+      const updated = await saveUsername(token, usernameValue.trim())
+      setProfile((prev) => ({ ...prev, username: updated.username }))
+      // Every post in this list is this user's own (this is their profile
+      // page), so all of them show the stale username until this patches it.
+      setPosts((prev) => prev.map((p) => ({ ...p, user_username: updated.username })))
+      updateUser({ username: updated.username })
+    } catch (err) {
+      setUsernameError(err.message)
+    } finally {
+      setUsernameSaving(false)
     }
   }
 
@@ -139,7 +191,27 @@ export default function ProfilePage() {
     setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
   }
 
-  if (loading || authLoading) return null
+  function handlePostDeleted(postId) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+    // Deleting a run can change (or clear) that distance's best effort, so
+    // refresh the summary too rather than leaving a stale, now-gone PR shown.
+    fetchBestEfforts(username, token)
+      .then((data) => {
+        const sorted = [...data.best_efforts].sort(
+          (a, b) => DISTANCE_ORDER.indexOf(a.distance_bucket) - DISTANCE_ORDER.indexOf(b.distance_bucket)
+        )
+        setBestEfforts(sorted)
+      })
+      .catch(() => {})
+  }
+
+  if (loading || authLoading) {
+    return (
+      <div className="wrap wide">
+        <RunningLoader />
+      </div>
+    )
+  }
   if (error) {
     return (
       <div className="wrap wide">
@@ -177,10 +249,11 @@ export default function ProfilePage() {
               </svg>
             )}
           </h1>
+          {profile.username && <p className="profile-username">@{profile.username}</p>}
           <p className="lede">
-            <Link to={`/profile/${profile.id}/followers`}>{profile.follower_count} followers</Link>
+            <Link to={`/profile/${profile.username}/followers`}>{profile.follower_count} followers</Link>
             {' · '}
-            <Link to={`/profile/${profile.id}/following`}>{profile.following_count} following</Link>
+            <Link to={`/profile/${profile.username}/following`}>{profile.following_count} following</Link>
           </p>
         </div>
         {!profile.is_self && viewer && (
@@ -198,10 +271,32 @@ export default function ProfilePage() {
             {profile.follow_status === 'none' && 'Follow'}
           </button>
         )}
+        {profile.is_self && (
+          <button type="button" className="follow-button" onClick={() => setSettingsOpen((v) => !v)}>
+            {settingsOpen ? 'Done' : 'Edit profile'}
+          </button>
+        )}
       </div>
 
-      {profile.is_self && (
+      {profile.is_self && settingsOpen && (
         <div className="profile-settings">
+          <form onSubmit={handleSaveUsername} className="username-edit-form">
+            <label htmlFor="profile_username">Username</label>
+            <input
+              type="text"
+              id="profile_username"
+              maxLength={20}
+              autoComplete="off"
+              value={usernameValue}
+              onChange={(e) => setUsernameValue(e.target.value)}
+            />
+            <UsernameStatusMessage status={usernameStatus} />
+            {usernameError && <p className="post-edit-error">{usernameError}</p>}
+            <button type="submit" disabled={!isUsernameStatusSubmittable(usernameStatus) || usernameSaving}>
+              {usernameSaving ? 'Saving…' : 'Save username'}
+            </button>
+          </form>
+
           <label className="privacy-toggle">
             <input type="checkbox" checked={profile.is_private} onChange={togglePrivacy} disabled={privacyBusy} />
             Private account
@@ -220,7 +315,7 @@ export default function ProfilePage() {
           <div className="user-list">
             {requests.map((r) => (
               <div key={r.id} className="user-list-row follow-request-row">
-                <Link to={`/profile/${r.id}`} className="follow-request-user">
+                <Link to={`/profile/${r.username}`} className="follow-request-user">
                   {r.avatar_url ? (
                     <img src={r.avatar_url} alt="" />
                   ) : (
@@ -247,6 +342,36 @@ export default function ProfilePage() {
         </>
       )}
 
+      {bestEfforts.length > 0 && (
+        <>
+          <h2>Best efforts</h2>
+          <div className="best-efforts-grid">
+            {bestEfforts.map((be) => (
+              <Link
+                key={be.distance_bucket}
+                to={`/profile/${profile.username}/best/${be.distance_bucket}`}
+                className="best-effort-card"
+              >
+                <div className="best-effort-label">{DISTANCE_LABELS[be.distance_bucket] ?? be.distance_bucket}</div>
+                <div className="best-effort-time">{formatDuration(be.duration_s)}</div>
+                <div className="best-effort-meta">
+                  <span className={`tier-dot ${be.tier}`}></span>
+                  <span className="best-effort-pace">{formatPace(be.pace_sec_per_km)}</span>
+                  {be.time_type && <span className="time-type-tag">{be.time_type}</span>}
+                </div>
+                {(be.event_name || be.event_date) && (
+                  <div className="best-effort-event">
+                    {be.event_name}
+                    {be.event_name && be.event_date && ' '}
+                    {be.event_date && `(${formatEventDate(be.event_date)})`}
+                  </div>
+                )}
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
       <h2>Posts</h2>
       {postsGated && (
         <div className="empty-state">
@@ -259,7 +384,7 @@ export default function ProfilePage() {
       {!postsGated && posts.length > 0 && (
         <div className="feed">
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} onUpdated={handlePostUpdated} />
+            <PostCard key={post.id} post={post} onUpdated={handlePostUpdated} onDeleted={handlePostDeleted} />
           ))}
         </div>
       )}

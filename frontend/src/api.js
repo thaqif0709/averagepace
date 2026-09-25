@@ -18,7 +18,7 @@ export async function fetchMe(token) {
   return res.json()
 }
 
-export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, resultUrl, caption }) {
+export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gpxFile, resultUrl, timeType, eventName, eventDate, caption }) {
   const form = new FormData()
   form.append('claimed_distance_km', claimedDistanceKm)
   if (gpxFile) {
@@ -27,6 +27,9 @@ export async function submitRun({ token, claimedDistanceKm, claimedDurationS, gp
     form.append('claimed_duration_s', claimedDurationS)
   }
   if (resultUrl) form.append('result_url', resultUrl)
+  if (timeType) form.append('time_type', timeType)
+  if (eventName) form.append('event_name', eventName)
+  if (eventDate) form.append('event_date', eventDate)
   if (caption) form.append('caption', caption)
 
   const res = await fetch(`${API_URL}/api/upload`, {
@@ -75,11 +78,20 @@ export async function createTextPost(token, body) {
   return res.json()
 }
 
-export async function updatePost(token, postId, body) {
+export async function updatePost(token, postId, body, runMetadata) {
+  const payload = runMetadata
+    ? {
+        body,
+        event_name: runMetadata.eventName,
+        time_type: runMetadata.timeType,
+        result_url: runMetadata.resultUrl,
+        event_date: runMetadata.eventDate,
+      }
+    : { body }
   const res = await fetch(`${API_URL}/api/posts/${postId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => null)
@@ -88,26 +100,90 @@ export async function updatePost(token, postId, body) {
   return res.json()
 }
 
-export async function fetchUserProfile(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}`, { headers: authHeaders(token) })
+export async function deleteRun(token, runId) {
+  const res = await fetch(`${API_URL}/api/runs/${runId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.detail || 'Failed to delete')
+  }
+  return res.json()
+}
+
+export async function deletePost(token, postId) {
+  const res = await fetch(`${API_URL}/api/posts/${postId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.detail || 'Failed to delete')
+  }
+  return res.json()
+}
+
+export async function updateRunMetadata(token, runId, { eventName, timeType, resultUrl, eventDate }) {
+  const res = await fetch(`${API_URL}/api/runs/${runId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify({ event_name: eventName, time_type: timeType, result_url: resultUrl, event_date: eventDate }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.detail || 'Failed to save')
+  }
+  return res.json()
+}
+
+export async function fetchUserProfile(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('User not found')
   return res.json()
 }
 
-export async function fetchUserPosts(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/posts`, { headers: authHeaders(token) })
+export async function fetchUserPosts(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/posts`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load posts')
   return res.json()
 }
 
-export async function fetchFollowers(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/followers`, { headers: authHeaders(token) })
+export async function fetchBestEfforts(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/best-efforts`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Failed to load best efforts')
+  return res.json()
+}
+
+export async function fetchUserRunsByDistance(username, distance, token) {
+  const params = new URLSearchParams({ distance })
+  const res = await fetch(`${API_URL}/api/users/${username}/runs?${params}`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Failed to load runs')
+  return res.json()
+}
+
+export async function fetchEventSuggestions(query) {
+  const params = new URLSearchParams({ q: query })
+  const res = await fetch(`${API_URL}/api/events/suggest?${params}`)
+  if (!res.ok) throw new Error('Failed to load suggestions')
+  return res.json()
+}
+
+export async function searchAll(query, type, token) {
+  const params = new URLSearchParams({ q: query, type })
+  const res = await fetch(`${API_URL}/api/search?${params}`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Search failed')
+  return res.json()
+}
+
+export async function fetchFollowers(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/followers`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load followers')
   return res.json()
 }
 
-export async function fetchFollowing(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/following`, { headers: authHeaders(token) })
+export async function fetchFollowing(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/following`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load following')
   return res.json()
 }
@@ -119,6 +195,26 @@ export async function updatePrivacy(token, isPrivate) {
     body: JSON.stringify({ is_private: isPrivate }),
   })
   if (!res.ok) throw new Error('Failed to update privacy')
+  return res.json()
+}
+
+export async function checkUsername(username, token) {
+  const params = new URLSearchParams({ username })
+  const res = await fetch(`${API_URL}/api/username/check?${params}`, { headers: authHeaders(token) })
+  if (!res.ok) throw new Error('Failed to check username')
+  return res.json()
+}
+
+export async function setUsername(token, username) {
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify({ username }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to set username')
+  }
   return res.json()
 }
 
@@ -146,8 +242,8 @@ export async function declineFollowRequest(token, requesterId) {
   return res.json()
 }
 
-export async function followUser(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/follow`, {
+export async function followUser(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/follow`, {
     method: 'POST',
     headers: authHeaders(token),
   })
@@ -158,11 +254,95 @@ export async function followUser(userId, token) {
   return res.json()
 }
 
-export async function unfollowUser(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/follow`, {
+export async function unfollowUser(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/follow`, {
     method: 'DELETE',
     headers: authHeaders(token),
   })
   if (!res.ok) throw new Error('Failed to unfollow')
+  return res.json()
+}
+
+export async function vouchForRun(runId, token) {
+  const res = await fetch(`${API_URL}/api/runs/${runId}/vouch`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to vouch')
+  }
+  return res.json()
+}
+
+export async function unvouchForRun(runId, token) {
+  const res = await fetch(`${API_URL}/api/runs/${runId}/vouch`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) throw new Error('Failed to unvouch')
+  return res.json()
+}
+
+export async function likePost(postId, token) {
+  const res = await fetch(`${API_URL}/api/posts/${postId}/like`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to like')
+  }
+  return res.json()
+}
+
+export async function unlikePost(postId, token) {
+  const res = await fetch(`${API_URL}/api/posts/${postId}/like`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) throw new Error('Failed to unlike')
+  return res.json()
+}
+
+export async function fetchReviewQueue(token) {
+  const res = await fetch(`${API_URL}/api/admin/review-queue`, { headers: authHeaders(token) })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to load review queue')
+  }
+  return res.json()
+}
+
+export async function fetchRecentlyVerified(token) {
+  const res = await fetch(`${API_URL}/api/admin/verified`, { headers: authHeaders(token) })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to load verified runs')
+  }
+  return res.json()
+}
+
+export async function verifyRun(token, runId) {
+  const res = await fetch(`${API_URL}/api/admin/runs/${runId}/verify`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to verify')
+  }
+  return res.json()
+}
+
+export async function unverifyRun(token, runId) {
+  const res = await fetch(`${API_URL}/api/admin/runs/${runId}/unverify`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || 'Failed to unverify')
+  }
   return res.json()
 }

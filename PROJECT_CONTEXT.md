@@ -51,7 +51,7 @@ SQLite storage. Restructured into a real frontend/backend split:
   public profiles) behave differently for signed-in vs. anonymous callers
   without requiring auth.
 - **`frontend/`** — React + Vite SPA, `react-router-dom` for `/` (feed),
-  `/submit`, `/leaderboard`, `/profile/:userId` (+ `/followers`,
+  `/submit`, `/leaderboard`, `/profile/:username` (+ `/followers`,
   `/following`). Calls the backend over `fetch` (`frontend/src/api.js`).
   Auth state lives in a React context (`frontend/src/auth.jsx`), session
   token in `localStorage`. No server-side rendering; the design system
@@ -71,22 +71,216 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   30-day JWT session stored in `localStorage`. Submitting/posting/following
   requires being signed in; viewing the leaderboard, the "Everyone" feed, and
   public profiles doesn't.
+- **Analytics** (GA4, `frontend/src/analytics.js`) — page views, sign-ups,
+  and logins, gated entirely behind `VITE_GA_MEASUREMENT_ID`: every export
+  (`trackPageView`/`identifyUser`/`trackAuthEvent`/`clearUser`) is a no-op
+  when it's unset, so local dev and any environment that hasn't configured
+  it send nothing. The gtag.js snippet loads lazily on first use rather than
+  from a `<script>` tag in `index.html`, so that gating is possible at all.
+  Since this is a client-routed SPA, gtag's own automatic pageview is
+  disabled (`send_page_view: false`) and `App.jsx` fires `page_view` itself
+  on every `useLocation()` change instead - otherwise the first page would
+  double-count. `identifyUser` calls GA4's User-ID feature with our own
+  numeric `user.id` (never email/name) so "new users" reflects distinct
+  accounts rather than distinct browsers. Telling a fresh signup apart from
+  a returning login needed a backend change: `upsert_user()`'s `INSERT ...
+  ON CONFLICT DO UPDATE` now also returns `(xmax = 0) AS is_new_user` - the
+  standard trick for reading which branch an upsert took from its own
+  `RETURNING` clause - and `/api/auth/google` passes that through
+  (popped off the `user` object, returned as a sibling `is_new_user` field)
+  so the frontend fires GA4's `sign_up` or `login` event correctly.
+- **Usernames** (`users.username`, nullable TEXT) — a stable, human-chosen
+  handle. `users.id` stays the real internal identifier (every FK - follows,
+  posts, runs, vouches, likes - still points at that numeric id), but
+  **profile URLs are username-based, Twitter/X style**: `/profile/:username`,
+  not `/profile/:userId`. This is a deliberate one-way switch, not a
+  redirect layer - there's no dual routing and no fallback to the old
+  numeric-id URLs, which now 404 ("User not found") exactly like any other
+  unrecognized profile. Renaming your username is not protected either: the
+  old handle stops resolving immediately and, since it becomes available
+  again, could in principle be claimed by a different account later - same
+  tradeoff Twitter/X makes, chosen explicitly over a safer
+  numeric-id-canonical-plus-redirect design. Format (3-20 chars,
+  letters/numbers/underscores, validated in `clean_username()` in `main.py`)
+  additionally *requires at least one non-digit character*
+  (`^(?=.*[A-Za-z_])[A-Za-z0-9_]{3,20}$`) so an all-digits string can never
+  be a valid username - that's what lets `/profile/:username` stay
+  unambiguous, since old numeric ids would otherwise look like plausible
+  usernames. Uniqueness is case-insensitive, enforced by a
+  `UNIQUE INDEX ON (LOWER(username))` rather than a plain column constraint
+  so any number of NULLs (accounts that haven't picked one yet) stay
+  allowed; lookups resolve the same way (`get_user_by_username()` in
+  `database.py`, `WHERE LOWER(username) = LOWER(%s)`), so
+  `/profile/Alice_Runner` and `/profile/alice_runner` land on the same
+  profile. `GET /api/username/check` live-checks availability (debounced
+  350ms client-side, `useUsernameStatus.js`), excluding the caller's own
+  current username so re-saving it unchanged doesn't read as "taken."
+  `PATCH /api/auth/me` now accepts `username` alongside the pre-existing
+  `is_private`, returns the full fresh user row either way. A brand-new or
+  pre-existing account with `username IS NULL` gets a blocking modal
+  (`ChooseUsernameDialog.jsx`, rendered at the `App.jsx` level whenever
+  `user && !user.username`) that covers the page below the topbar (lower
+  z-index than `.topbar`, so Sign out stays reachable as an escape hatch)
+  until they pick one - no skip option; `ProfileRedirect` (bare `/profile`)
+  also guards this window, sending a still-username-less user to `/` instead
+  of a broken `/profile/undefined`. Editable later from your own profile
+  page (`.username-edit-form` in `ProfilePage.jsx`, next to the privacy
+  toggle). Shown as `@username` under the display name on any profile, and
+  next to the author name on every post (`PostCard.jsx`) once `POST_SELECT`
+  started including it. Every `/api/users/{username}/...` endpoint
+  (profile, posts, best-efforts, runs, followers, following, follow/unfollow)
+  resolves the username to a numeric id once via `get_user_by_username()`
+  and 404s upfront if it doesn't exist, then behaves exactly as it did when
+  keyed on the numeric id.
+- **Search** (`GET /api/search?q=&type=people|posts|runs` - one endpoint,
+  three unrelated queries behind a `type` switch, not merged results) - a
+  search icon in the topbar (`SearchWidget.jsx`, always visible, not tucked
+  behind the mobile hamburger since it's a primary action) opens a dropdown
+  with a text input, three filter pills, and live debounced (300ms, 2-char
+  minimum) results. People search matches name or username and returns
+  every matching account regardless of privacy - an account is findable by
+  name the way it is on Twitter/Instagram, only its *content* is gated, not
+  its existence. Posts and event-runs search reuse that same privacy rule
+  inline as a SQL condition (`u.is_private = FALSE OR <viewer owns it> OR
+  <viewer follows it, accepted>) rather than filtering in Python, so a
+  private account's own posts/runs are still findable by the account owner
+  or their accepted followers, unlike the general "Everyone" feed/queue
+  which - by design, elsewhere - shows *only* public accounts even to an
+  account's own followers. Clicking a result routes to the runner's/
+  author's profile - there's no post-permalink page, so a post result
+  doesn't jump to the post itself. Result rows share one `ResultRow`
+  component branching on `type`, since the three shapes need almost the same
+  avatar+title+subtitle layout.
 - **Social layer** — Twitter-style. Users follow each other
   (`follows` table); posts (`posts` table) are either free-text or linked to
   a run (`run_id`), so a scored submission and a text update share one feed.
   Post owners can edit the text later (`PATCH /api/posts/{id}`, sets
   `edited_at`, shown in the UI as "· edited" - the DB's own
   `body IS NOT NULL OR run_id IS NOT NULL` CHECK constraint is what blocks
-  emptying a text-only post, caught in `update_post()`).
+  emptying a text-only post, caught in `update_post()`). The same PATCH also
+  accepts `event_name`/`time_type`/`result_url` when the post has a run
+  attached (`update_run_metadata()`), so those stay fixable after the fact -
+  distance and duration deliberately don't, since vouches and leaderboard
+  rank are earned against those exact numbers. Fixing a wrong distance/time
+  means deleting the run (`DELETE /api/runs/{id}`, owner-only, cascades to
+  its post and any vouches via FK) and resubmitting. A text-only post (no
+  run attached) can be deleted too, via a separate `DELETE /api/posts/{id}`
+  guarded to `run_id IS NULL` so it can never be used to bypass the run
+  path's cascade. Both edit and delete sit behind a kebab (⋮) menu on the
+  post - opens a small dropdown with "Edit"/"Delete"; picking "Edit" opens
+  the existing inline form (which itself still has a "Delete" option once
+  inside), while picking "Delete" jumps straight to that form's confirm
+  step. The same menu is available per-row on the Best Efforts drill-down
+  (`BestEffortDetailPage.jsx`'s `RunRow`), via a dedicated
+  `PATCH /api/runs/{id}` (metadata-only, no caption in play there - reuses
+  `update_run_metadata()`/`clean_run_metadata()` directly rather than going
+  through a post).
   - **Home feed** (`/`) — "Following" and "Everyone" tabs (URL-driven via
     `?scope=`), a composer for text posts when signed in. "Everyone" only
-    ever shows posts from public accounts.
-  - **Public profile** (`/profile/:userId`) — anyone's avatar, name, a
+    ever shows posts from public accounts. Logged-out visitors see a
+    mission-statement hero instead of the bare feed: the problem (official
+    times scattered across a different results site per race), a world
+    record ticker (see below), the pitch (paste the link, log the time, one
+    running history), the Strava jab (best-effort history sits behind a
+    paywall there; it doesn't here), and a 3-step "how it works" before the
+    public feed continues below as social proof. Swapped in purely on
+    `!loading && !user` in `HomePage.jsx` - logged-in users see the same
+    feed as always, no new route.
+  - **World record ticker** (`WorldRecordTicker.jsx`, logged-out hero only)
+    — a 6-digit `HH:MM:SS` readout that auto-advances every 2.8s through the
+    men's and women's world records for the same 4 distances the app itself
+    tracks (5K, 10K, half, marathon - 8 entries total, interleaved men's/
+    women's per distance; data in `frontend/src/data/worldRecords.js`, each
+    entry `{ distanceLabel, digits, holder, year }` - hand-maintained, no
+    live data source, update it whenever a record falls; for the two road
+    distances we use the mixed-sex-race women's time rather than the
+    separate "women-only race" record, since that's the one usually meant
+    by "the world record"). Labels are deliberately inconsistent, matching
+    what's actually official: track events (5K/10K) are run as genuinely
+    separate "Men's"/"Women's" competitions, so both get that prefix; road
+    records aren't split that way for men (there's no official "Men's
+    Marathon" title, it's just The Record), so those two entries are
+    unprefixed, while "Women's Half Marathon"/"Women's Marathon" still say
+    so since that women's-specific split is real and official. Rather than
+    swapping the digits instantly, the
+    clock actually counts from wherever it's currently sitting to the new
+    target - forward or backward, whichever direction gets there - over
+    1000ms with an ease-out curve, like a stopwatch/odometer physically
+    running through the seconds rather than a labeled value just changing.
+    That's driven by `requestAnimationFrame` interpolating total seconds
+    (not a CSS `animation`/`transition`), which was a deliberate choice: it
+    means `prefers-reduced-motion` can't reach it at all, same reasoning as
+    the loading spinner - the count *is* the feature, not decoration on top
+    of it. The meta line (distance/holder/year) below it still crossfades
+    via a CSS keyframe keyed on `distanceLabel`, and that one does respect
+    reduced-motion normally. `aria-hidden` on the whole widget since it's
+    decorative and auto-updating, redundant with accessible text elsewhere
+    on the page. The meta line forces `white-space: nowrap` +
+    `text-overflow: ellipsis` rather than letting it wrap - some
+    distance/holder/year combinations are longer than others (e.g. "Women's
+    Half Marathon · Letesenbet Gidey · 2021"), and at mobile widths a
+    wrapping one grew the whole card every time the ticker cycled to it.
+    Truncating keeps the card's height constant across every record instead;
+    the rare long one loses its trailing year to an ellipsis, which is a
+    fine trade against the card visibly resizing every few seconds.
+  - **Activity marquee** (`ActivityMarquee.jsx`, logged-out only, full-bleed
+    above the hero, outside `.wrap`) — a horizontally-scrolling strip styled
+    like an old orange dot-matrix LED sign (DotGothic16 - a genuine
+    dot-matrix Google Font - in amber on near-black, `text-shadow` glow to
+    sell the lit-LED look). Content comes from the same `posts` feed
+    `HomePage.jsx` already fetches, no separate request: scored runs
+    (`post.run_id` present) become lines like "ALICE JUST LOGGED A 5K —
+    22:14" - but only once at least `MIN_DISTINCT_USERS` (4) *different*
+    people show up in that batch; otherwise it shows the static value-prop
+    fallback lines instead, not a mix of the two. Originally gated on raw
+    post count, which broke exactly as you'd expect the first time it hit
+    production: one account's 5 test runs cleared the count bar alone and
+    the strip looped that one name over and over, reading like a bug rather
+    than a quiet-but-real site. Re-gated on `new Set(posts.map(p =>
+    p.user_id)).size` instead, and made the fallback a full replacement
+    below threshold rather than a supplement above it - a couple of real
+    messages padded out with generic lines still visibly loops the same
+    name, so there's no partial-credit state worth keeping. Once it does
+    clear the bar it repeats that message list as many times as needed to
+    clear 450 characters before joining it into the track - the seamless
+    -50% loop trick only works if one copy is at least as wide as the
+    viewport, and a short message list comfortably fit within a single
+    copy's width on a wide/ultrawide monitor otherwise, leaving a visible
+    gap of bare background partway through the scroll (looked like the
+    strip "went black"). Loops seamlessly by rendering that padded string
+    twice back to back and animating `translateX` by exactly -50% of the
+    track's own width. Deliberately ignores `prefers-reduced-motion` (an
+    explicit request), same as the world-record ticker - but since this one
+    is a real CSS `animation` rather than `requestAnimationFrame`, the
+    global reduced-motion rule actually reaches it, so the override has to
+    win the cascade on purpose: it redeclares the full `animation` shorthand
+    on `.activity-marquee-track` with `!important`, which beats the global
+    rule's `!important` on `*` because a class selector is more specific
+    than the universal one. Scroll speed is calibrated relative to the
+    container's width, not a fixed pixel rate: it targets "one
+    container-width of text scrolls by every ~26.7s" (`1280 / 48`, tuned
+    against a ~1280px desktop view feeling right), not a flat px/s - a flat
+    rate covers proportionally more of a narrow phone screen every second
+    than a wide desktop one, so it read as much faster on mobile even
+    though the CSS-pixel speed was identical. A `useLayoutEffect` measures
+    the rendered track's width and its container's width once mounted and
+    sets `--marquee-duration` (read by both the normal and reduced-motion
+    `animation` rules) to `trackWidth / (containerWidth / 26.7)`, and a
+    `ResizeObserver` on the container re-applies it on any size change
+    (window resize, phone rotation) so it doesn't go stale after mount.
+    Runs before the first paint - no flash of the wrong speed. That relative
+    pace alone made phone-width screens feel sluggish on their own terms
+    (~14.6px/s at 390px), so the speed is also floored at 24px/s - below
+    that, `Math.max` takes over; above ~640px-wide containers the
+    proportional formula already clears the floor on its own, so desktop is
+    unaffected.
+  - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),
-    and their post history. Deliberately excludes email — `get_user_public()`
-    in `database.py` only ever selects `id, name, avatar_url, is_private`.
-  - **Follower/following lists** (`/profile/:userId/followers|following`)
+    and their post history. Deliberately excludes email — `get_user_public()`/
+    `get_user_by_username()` in `database.py` only ever select
+    `id, name, avatar_url, is_private, username`.
+  - **Follower/following lists** (`/profile/:username/followers|following`)
   - **Private accounts** — a user can flip `users.is_private` (toggle on
     their own profile page). Follow-approval model, same idea as Instagram's
     "private account"/Twitter's "protected Tweets": following a private
@@ -104,19 +298,36 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     nothing stops the same person from immediately requesting again.
 - **Upload flow** (`/submit`) — claimed distance plus a manually entered time
   (auto-formatted as you type, e.g. `2548` → `25:48`; pace auto-computed),
-  an optional link to an official race result, and an optional caption.
-  Runner name comes from the authenticated Google account. A successful
-  submission also creates a feed post linking the run, with the caption as
-  its body. GPX upload is **not exposed in this UI** as of the pivot away
-  from device-file verification toward logging official races (see below) -
-  the `gpx_file` form field, `analyze_gpx_bytes()`, and the whole green/yellow
+  an optional link to an official race result, an optional gun/chip time tag,
+  and an optional caption. Distance has one-tap presets for the four
+  standard race lengths (5K/10K/Half/Marathon, filling in the exact
+  5/10/21.1/42.2 km rather than relying on the runner to know or type the
+  precise figure - the free-text input stays too, for anything non-standard)
+  - `bucket_for_distance()` in `trust_score.py` already tolerates some
+  imprecision (it buckets by range, not exact match), but the presets remove
+  the guesswork entirely rather than just relying on that tolerance. Runner
+  name comes from the authenticated Google account. A successful submission
+  also creates a feed post linking the run, with the caption as its body.
+  GPX upload is **not exposed in this UI** as of the pivot away from
+  device-file verification toward logging official races (see below) - the
+  `gpx_file` form field, `analyze_gpx_bytes()`, and the whole green/yellow
   GPX-analysis path are all still there in `backend/`, untouched, reachable
   directly via the API. Bringing the picker back is a pure frontend change.
-- **Trust scoring** (`backend/trust_score.py`) — three paths to a tier:
+- **Gun time / chip time** (`time_type` on `runs`, nullable, `'gun'` or
+  `'chip'`) — purely an informational tag, not fed into trust scoring. Race
+  clocks report gun time (from the start signal) and chip time (net, from
+  crossing the start mat) differently, so tagging which one was entered lets
+  anyone checking the linked result know which figure to compare against.
+  Shown as a small pill next to the time everywhere a run appears (feed,
+  profile, leaderboard, the post-submit result card).
+- **Trust scoring** (`backend/trust_score.py`) — three paths to an automated
+  score/tier, capped at yellow (see "Admin verification" below for how a run
+  actually reaches green):
   1. GPX file (API-only right now) → automated: five checks (GPS speed
      jumps, pace-floor plausibility, claimed-vs-GPS distance mismatch,
-     elevation sanity, duplicate-file detection via SHA-256 hash) → green/
-     yellow/red by score.
+     elevation sanity, duplicate-file detection via SHA-256 hash) → yellow/
+     red by score (`score >= 50` is yellow, capped there - no automated path
+     reaches green).
   2. Manual entry + an official result link (`result_url` on `runs`) →
      always yellow/score 60, via `linked_result()`. Not machine-verified -
      deliberately so, since checking it server-side would mean scraping
@@ -128,14 +339,397 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      shown as a citation on the entry (leaderboard, feed, profile) for any
      human to click through and check.
   3. Manual entry, no link → always red/score 0, via `unverified_result()`.
-- **Trust tiers** — green (85+, high trust, GPX-verified) / yellow (50-84,
-  either GPX-plausible-but-flagged or link-backed) / red (<50, no evidence at
-  all) — shown immediately with specific flags raised
+- **Trust tiers** — green (admin-verified, see below) / yellow (either
+  GPX-plausible-but-flagged or link-backed, not yet reviewed) / red (no
+  evidence at all) — shown immediately with specific flags raised
+- **Admin verification** — green used to mean "our own automated GPS
+  analysis was confident" (score >= 85); it now means a human on our side
+  actually checked the link. `users.is_admin` (bootstrapped from the
+  `ADMIN_EMAILS` env var, comma-separated, matched at every `init_db()` run
+  - there's no in-app way to grant it) gates `/admin` (`AdminReviewPage.jsx`)
+  and four endpoints, all behind `get_current_admin_user` in `auth.py`
+  (403s a non-admin): `GET /api/admin/review-queue` (every run with a
+  `result_url` and no `verified_by_admin_id` yet, oldest first),
+  `GET /api/admin/verified` (the 20 most recently verified, newest first),
+  `POST /api/admin/runs/{id}/verify` (sets `tier='green'`,
+  `verified_by_admin_id`, `verified_at`), and `.../unverify` (reverts to
+  yellow). The page shows both lists - a "Review queue" table with a Verify
+  button per row, and a "Recently verified" table below it with an Undo
+  button that calls unverify - so a mis-click has an immediate, visible way
+  back rather than only a reachable-by-curl safety valve. Both tables share
+  one `RunRow`/`RunTable` component in `AdminReviewPage.jsx`; verifying or
+  undoing moves the run between the two lists' local state directly rather
+  than re-fetching either endpoint. A migration downgrades any pre-existing
+  automated-green run to yellow the first time this runs, since none of
+  those were actually admin-checked.
+- **Vouches** (`vouches` table, `user_id`+`run_id` primary key) — social
+  proof, deliberately kept separate from trust scoring rather than feeding
+  into the tier/score, so a run's tier stays an objective signal and vouching
+  can't be brigaded into inflating it. Any signed-in user except the runner
+  can vouch for a run once (toggle on `POST`/`DELETE /api/runs/{id}/vouch`).
+  Shown as an interactive "Vouch"/"Vouched · N" pill on posts in the feed and
+  profile (`PostCard.jsx`) for other viewers, a plain "N vouched" readout for
+  the runner's own view and logged-out visitors, and a read-only count on the
+  leaderboard.
+- **Likes** (`likes` table, `user_id`+`post_id` primary key) — plain
+  engagement, architecturally separate from vouches: applies to *any* post
+  (text-only or run-attached) and carries no trust/scoring meaning at all,
+  vs. vouches which only exist on runs and are specifically a trust signal.
+  Same toggle mechanism as vouches (`POST`/`DELETE /api/posts/{id}/like`,
+  `ON CONFLICT DO NOTHING` for idempotent add), same self-restriction as a UX
+  convention rather than an integrity rule. Shown as a "Like"/"Liked · N"
+  pill (`PostCard.jsx`, own `.like-button` CSS mirroring `.vouch-button`) for
+  other signed-in viewers, a plain "N like(s)" readout for the poster's own
+  view and logged-out visitors.
+- **Share result card** (`ShareResultCard.jsx`, a "Share" text button next to
+  "Official result" on any run-attached post) — a growth feature, not a
+  social one: runners already post race results to their own Instagram/
+  WhatsApp, so this gives them a nicer-looking, on-brand image to post
+  instead of a plain screenshot, with an AveragePace wordmark riding along
+  into their network for free. Renders a small "sticker" (distance badge,
+  big time, pace, event name, wordmark) on a genuinely transparent PNG
+  canvas, since the intended use is dropping it on top of your own race-day
+  photo in an Instagram Story rather than posting it standalone. Went
+  through two rounds of visual feedback on exactly how "transparent" that
+  should look:
+  1. First cut had a solid-ish dark panel (`rgba(18,16,14,0.82)`) - cut
+     entirely per feedback in favor of floating text directly on the
+     transparent canvas with a layered `text-shadow` for contrast instead,
+     plus dropping the "PACE" label (just the pace value), shrinking the
+     action buttons, and trimming the dialog copy to a single "Share this
+     result" heading with no explanatory paragraph.
+  2. That fully-transparent version then read as *too* washed out - next
+     round asked for the background "darkened" back and the text's drop
+     shadow removed. Landed on `.share-card-panel { background:
+     rgba(10,8,8,0.45) }` - real but translucent (a photo underneath still
+     visibly shows through, confirmed by compositing an export over a
+     synthetic photo-like background in testing rather than judging by eye
+     on a flat backdrop, which made a 45%-alpha fill look misleadingly
+     solid), dark enough on its own to carry the text's contrast so the
+     shadow became redundant. Also swapped the accent color from amber to a
+     brighter Tyrian purple (`#C6107A` - the same ~325° hue as the site's
+     own `--accent` wordmark color, `#66023C`, just lifted from L=20% to
+     L=42% for a pop against the dark panel rather than picking an
+     unrelated color).
+  3. Turned out the dark panel from round 2 was only ever meant for the
+     *preview* - "the card is just to contrast the white and the squares of
+     the transparent background," not something that should end up in the
+     downloaded file. Restructured so the tint lives on `.share-card`
+     itself (the exact node `toPng` captures) rather than a nested
+     `.share-card-panel`, sized with `flex:1` inside `.share-card-preview`
+     so it fills that box exactly (0px gap on all sides, measured) instead
+     of floating smaller with checkerboard showing around it - and at
+     export time, `toPng`'s own `style` override (applied to its clone of
+     the node, never the live DOM) sets `backgroundColor: 'transparent'`,
+     so the live preview keeps its dark tint but the downloaded PNG is
+     genuinely, fully transparent (verified: center alpha 0 vs. round 2's
+     115). That reopens round 1's legibility problem for the white/cream
+     text specifically - confirmed by compositing the no-panel export over
+     both a mid-tone photo (still fine, busy colors carry their own
+     contrast) and a plain light one (the time, the card's actual point,
+     is nearly unreadable) - flagged to the user with both composites
+     rather than silently shipping it, since it's a real functional gap in
+     a bright-photo case, not just a style opinion; left as-is pending their
+     call, since it's what was explicitly asked for.
+  4. The badge showed the bucket label ("MARATHON") - changed to the
+     runner's own entered `distance_km` instead (`formatDistanceKm()`,
+     "42.2KM"), trimming a trailing `.0` for the round-number buckets (5K,
+     10K) but keeping one decimal otherwise (21.1KM, 42.2KM). This is the
+     actual course distance for that specific run, which is also what pace
+     was computed from - more specific and more accurate than a fixed
+     per-bucket label, since real courses don't always run exactly 5.00/
+     10.00/21.10/42.20km.
+  5. The "white" text (`share-card-time`, `-event`, `-brand`) was actually
+     `#FAF8F4` (the site's own warm-cream `--bg` token) - swapped for literal
+     `#FFFFFF`/`rgba(255,255,255,…)`, since on the dark preview panel the
+     off-white read as slightly muddy next to the request for clean white.
+  6. Dropped the explicit "Close" button - clicking the overlay already
+     dismisses the modal (`onClick={onClose}` on `.modal-overlay`, stopped
+     from bubbling by the inner `.modal`'s own `stopPropagation`), so a
+     dedicated button was redundant. Added a small `×` icon
+     (`.modal-close-x`) absolutely positioned in the top-left corner
+     instead. Needed `.share-modal`'s own `padding-top: 56px` (via a
+     `.modal.share-modal` two-class selector, not a plain `.share-modal`
+     one) to keep clear of the "Share this result" heading - a plain
+     `.share-modal { padding-top }` has the same specificity as, and
+     appears earlier than, the `@media (max-width: 640px) { .modal {
+     padding: 22px } }` reset further down the file, so at phone widths the
+     later rule was winning and collapsing the padding straight back down,
+     re-overlapping the × with the heading; verified by measuring the
+     actual bounding boxes at both 1280px and 390px; screenshots alone
+     looked fine at desktop width and only showed the overlap once
+     narrowed.
+  7. Pace value and the distance badge's text were also the Tyrian purple
+     accent - pace switched to pure white to match the time, and the badge
+     flipped from an outline (purple text/border, transparent fill) to a
+     filled pill (white text on a solid `#C6107A` background) rather than
+     just recoloring its text - a colored *label* reads better as a filled
+     chip than as colored outline text once there's more than one purple
+     element on the card. The "Pace" half of the `AveragePace` wordmark
+     stays purple - not mentioned in this round, and it's doing a different
+     job (brand mark, not a stat).
+  8. The wordmark itself shortened from "AveragePace" to "AvgPace" - but
+     only the two literal logo instances (`App.jsx`'s `.wordmark` in the
+     topbar, and this card's `.share-card-brand`), each still split
+     `Avg`/`Pace` across a plain-text run and the purple `<span>` so the
+     two-tone treatment carries over unchanged. Deliberately not a
+     find-and-replace: body copy that happens to say "AveragePace" (the
+     search placeholder, the admin-only notice, the "AveragePace pulls
+     them into a single..." line on the homepage) stays as full prose, per
+     an explicit "the copy should be fine" - only the two places that
+     function as *the logo* changed. (Revisited in point 12 below - once
+     the logo itself read "AvgPace", the remaining "AveragePace" prose
+     started to read as an unfinished rebrand rather than a deliberate
+     longer name, so those 3 spots were swapped too.)
+  9. Real bug, caught by the user, not by testing: the export wasn't
+     centered - a Playwright measurement of the actual exported file's
+     content bounding box found the content sitting at x=316-934 in a
+     1440px-wide canvas (left margin 316px, right margin 506px - a 190px
+     imbalance), not the badge/text being crammed together, which is what
+     it looks like at a glance. Root cause: the `flex: 1` added for the
+     "fill the whole preview" fix in round 3 made `.share-card`'s *live*
+     on-screen width context-dependent (measured 416px in a 1280px-wide
+     browser), while `exportCard()` still unconditionally requested
+     `width: CARD_WIDTH` (480) from `toPng` - confirmed directly via
+     `getBoundingClientRect()` on the live node. `html-to-image` doesn't
+     reconcile that gap by centering or rescaling the content; it renders
+     as if still laid out at the narrower live width inside a canvas
+     stretched to the requested one, leaving the leftover space stacked on
+     one side. (64px CSS-px gap x pixelRatio 3 = 192px, matching the
+     measured 190px almost exactly - strong confirmation, not a
+     coincidence.) Fixed at the root rather than patched: `.share-card`
+     now always stays laid out at its true, constant `CARD_WIDTH` (offset-
+     width unaffected by CSS transforms), and the "shrink to fit a narrow
+     modal" behavior moved to a purely visual `transform: scale()` sized
+     against a `.share-card-scale-wrapper` (its width/height set in JS to
+     the card's real, unscaled size x the display scale, so it reserves
+     only as much layout space as the shrunk card visually occupies -
+     computed via the same `useLayoutEffect` + `ResizeObserver` pattern
+     already used in `WorldRecordTicker.jsx`/`ActivityMarquee.jsx`).
+     `exportCard()`'s `style` override now also strips the transform
+     (`transform: 'none'`) on top of the existing `backgroundColor`
+     override, so the export always renders at the true full width the
+     `width` option already requests - the two can no longer disagree, on
+     any screen size. Verified via the same bounding-box measurement this
+     time at both 1280px and 390px: left/right margins now 412px/410px
+     (a 2px difference, essentially exact) at both, and the mobile export
+     still comes out full-resolution (1440px wide, not shrunk to match the
+     smaller on-screen preview) exactly as before.
+  10. Two small polish passes: `.share-card-panel`'s vertical padding went
+      20px -> 40px (the top/bottom breathing room read as cramped; left/
+      right untouched since that wasn't the complaint) - the card's dynamic
+      height measurement (`cardEl.offsetHeight` in the `useLayoutEffect`
+      from fix 9) picks this up automatically, so nothing else needed to
+      change for the scale-wrapper or the export to stay in sync. And the
+      close `×` moved from top-left to top-right, which also let a
+      `.modal.share-modal { padding-top: 56px }` override from fix 6 come
+      back out entirely: that padding only existed to keep the button clear
+      of the "Share this result" heading below it; on the right, the button
+      sits inline with the heading's own row instead (measured: "Share this
+      result" itself is only ~169px wide against a 416px-wide modal, so
+      there's no realistic heading length here that would reach far enough
+      right to collide - reverting to the plain `.modal` padding is safe).
+  11. Extended to the Best Efforts drill-down history table
+      (`BestEffortDetailPage.jsx`) as well - previously "Share" only lived
+      next to "Official result" on a feed/profile post. Added as the first
+      item inside that table's existing owner-only ⋮ menu
+      (`.post-menu-dropdown`, the same menu documented under "Best efforts"
+      below), ahead of Edit/Delete, rather than as its own separate button -
+      keeps the row's already-cramped trailing cell from growing another
+      control, and matches the "tuck secondary actions behind the menu"
+      pattern the menu already exists for. Surfaced a latent bug in doing
+      so: this table's `<tr>` can only legally contain `<td>`/`<th>`
+      children (an HTML nesting rule, not a React one), so rendering
+      `ShareResultCard`'s modal `<div>` as a `<tr>` sibling - valid at every
+      other call site so far - is invalid markup there that browsers
+      silently reparent rather than something React itself warns about.
+      Fixed at the component level, not the call site: `ShareResultCard`
+      now renders via `createPortal(..., document.body)`, so its DOM
+      placement no longer depends on where it's referenced in the tree - the
+      more robust default for a modal generally (escaping an ancestor's
+      overflow/stacking context is already the norm elsewhere in the app),
+      not just a one-off workaround for this call site. Verified via
+      Playwright that the rendered `.modal-overlay`'s DOM parent is
+      `<body>`, not nested inside the `<table>`, and that the menu now
+      reads `['Share', 'Edit', 'Delete']` in that order.
+  12. The 3 remaining "AveragePace" body-copy spots deliberately left alone
+      in point 8 (`HomePage.jsx`'s hero lede, `AdminReviewPage.jsx`'s
+      not-authorized notice, `SearchWidget.jsx`'s search placeholder) were
+      switched to "AvgPace" as a follow-up - asked explicitly, not
+      inferred: with the logo already shortened, the two names coexisting
+      in copy read as inconsistent rather than as a considered full-name/
+      short-name split. Straightforward literal text swaps, no CSS or
+      structural changes; confirmed no other "AveragePace" occurrences
+      remain anywhere under `frontend/src`. `README.md`/`DEPLOY.md` and the
+      actual infra (Netlify site name, GitHub repo, backend hostname) were
+      explicitly out of scope - those are the project's identity, not
+      in-app copy, and renaming them is a separate, riskier undertaking
+      (broken bookmarks/links, service renames) than editing a few lines
+      of JSX.
+  13. That same hero lede's "the orange app" (an unnamed dig at the
+      paywalled incumbent) now reads `the "orange app"`, quoted - a small
+      punctuation tweak, no rationale beyond the explicit ask.
+  14. Real bug, caught by the user: `PostCard.jsx`'s own "Share" text button
+      (next to "Official result", separate from the drill-down table's ⋮-menu
+      one added in point 11) had no visibility gating at all - unlike the
+      Edit/Delete `.post-menu` two lines above it in the same render, which
+      is correctly wrapped in `{isOwn && ...}`. Every viewer of a run-attached
+      post could open the Share modal for it, logged in or not, owner or not
+      - reported as: logged out entirely, viewing their own public profile,
+      the Share button on their own post was still clickable (true, but also
+      not the full extent of it: it was equally clickable on *anyone's* post
+      by *anyone*, since nothing referenced `isOwn` or `user` at all). Fixed
+      by wrapping the button in `{isOwn && (...)}`, same as the adjacent
+      Edit/Delete menu - `isOwn` (`user && user.id === post.user_id`) is
+      already `false`/falsy whenever `user` is null, so this one change
+      covers both the logged-out case and the logged-in-as-someone-else
+      case. Verified with three mocked auth states against the same post on
+      the same profile: logged out -> 0 Share buttons rendered, logged in as
+      a different user -> 0, logged in as the post's own owner -> 1.
+  A modal preview (`.share-card-preview`, checkerboard
+  background so real transparency is visibly confirmed before download, not
+  just assumed) offers "Share" (Web Share API with a `File`, when
+  `navigator.canShare` supports it - mobile only in practice) alongside a
+  "Download" fallback everywhere else. That fix also caught a real, unrelated
+  layout bug shared by every modal in the app: `.modal-overlay`'s z-index
+  (40) was *below* the sticky `.topbar`'s (50), so a modal tall enough to
+  reach the top of the viewport rendered partially behind the nav bar
+  instead of over it, rather than just needing a bit more clearance from it.
+  Fixed by raising `.modal-overlay` to z-index 61 (above both the topbar and
+  the mobile-menu dropdown's 60) and giving `.modal` a
+  `max-height: calc(100vh - 48px)` + `overflow-y: auto` safety net so no
+  future modal's content can ever grow tall enough to revisit the problem.
+  Built client-side with `html-to-image` (`toPng`) rather than a backend
+  renderer - no server dependency, and the card's own CSS is the only source
+  of truth for what it looks like. Passing an explicit `width` to `toPng`
+  keeps the exported file at full resolution (1440px @ pixelRatio 3 off a
+  480px card) even when the on-screen preview itself has shrunk to fit a
+  phone screen. One real bug caught by testing this against actual
+  production data rather than just eyeballing the code: `html-to-image`'s
+  default font-embedding step walks every stylesheet on the page looking for
+  `@font-face` rules to inline, including the cross-origin Google Fonts
+  stylesheet - reading a cross-origin sheet's `cssRules` throws a
+  `SecurityError` and aborts the export entirely, in every real browser, for
+  every user. Fixed with `skipFonts: true`: the capture rasterizes inside
+  the same page that already has the font active, so skipping the
+  embed-for-portability step (which nothing here needs, since the SVG never
+  leaves this page) sidesteps the crash with no visible difference in output.
+- **Best efforts** (`GET /api/users/{username}/best-efforts`) — each runner's
+  fastest submission per distance bucket, one row via
+  `ROW_NUMBER() OVER (PARTITION BY distance_bucket ORDER BY duration_s ASC)`
+  in `get_best_efforts()`; buckets with no submissions are simply absent, not
+  zero-filled. Shown as a small card grid near the top of the profile page
+  (`ProfilePage.jsx`, ordered 5K→10K→Half→Marathon), gated by the same
+  `can_view_private_content` privacy check as posts. Requested explicitly as
+  a Strava feature that's normally paywalled there. Each card links to
+  `/profile/:username/best/:distanceBucket` (`BestEffortDetailPage.jsx`,
+  backed by `GET /api/users/{username}/runs?distance=`), a drill-down listing every
+  submission at that one distance, fastest first - reuses the leaderboard's
+  `<table>`/`data-label` markup so it gets the same mobile card layout for
+  free.
+  - Each card's meta row (`.best-effort-meta`, a flex row: tier-dot + pace +
+    optional CHIP/GUN `.time-type-tag` pill) had a bug where the tier-dot
+    rendered as a full circle on some cards but only a thin sliver on
+    others (reported: visible on 5K, clipped on Half Marathon/Marathon).
+    Root cause: `.tier-dot` had no `flex-shrink`, and being an empty
+    `<span>` its content-based minimum width is 0, so whenever the row's
+    content (dot + pace + tag) didn't fit the card, flexbox shrank the dot
+    - the only child with room to give - down toward 0 width while its
+    fixed 8px height stayed put, turning the circle into a vertical
+    sliver. The 1-character difference between "GUN" and "CHIP" was enough
+    to push some cards over the threshold and not others, matching the
+    reported pattern exactly (confirmed via a standalone Playwright repro
+    sweeping container widths before touching any CSS). Fixed by giving
+    both fixed-size decorations (`.tier-dot`, `.time-type-tag`) explicit
+    `flex-shrink: 0` so neither ever deforms, and wrapping the pace text in
+    its own `.best-effort-pace` span with `min-width: 0` +
+    `overflow/text-overflow/white-space` ellipsis so *it* is the one
+    element that gracefully truncates under real space pressure - the same
+    technique already used for `.best-effort-event` and `.wr-ticker-meta`.
+    Verified the dot stays a perfect 8x8 circle from the grid's normal
+    range down to its absolute minimum card width (140px), where the pace
+    text truncates instead of the dot deforming or the row overflowing the
+    card.
+  - On the drill-down table (`BestEffortDetailPage.jsx`), each row's ⋮ entry
+    menu (`.run-actions-cell`, edit/delete for `isOwn` viewers) sat in its
+    own trailing table column on desktop, which the `max-width: 600px`
+    card-ification (`table,tbody,tr,td { display:block }` + `data-label`
+    pseudo-labels, shared with the leaderboard) turned into its own
+    full-width row at the bottom of the mobile card, under Trust. Moved it
+    onto the same line as the rank/date row on mobile specifically (the
+    card's first line, e.g. "① 23/09/2026 ⋮"), matching where the analogous
+    per-item menu sits on post cards. Done with a CSS-only, mobile-only rule
+    scoped by `tr:has(.run-actions-cell)` - a selector only this table's
+    rows match (`.run-actions-cell` isn't used anywhere else, confirmed via
+    a repo-wide grep), so the leaderboard and admin-review tables that share
+    the same base card CSS are untouched. Inside that scope, the `<tr>`
+    becomes a `display: grid` with two columns (`1fr auto`) and named
+    `grid-template-areas` pairing the rank cell with the actions cell in one
+    row while Event/Time/Pace/Trust keep their own full-width rows below;
+    the actions cell also picks up the rank cell's divider styling
+    (border-bottom/margin/padding) so the underline still spans the full
+    row instead of stopping under the date. No JSX/DOM changes, so
+    desktop's plain table layout (already one line per row by definition)
+    is untouched - verified via a standalone Playwright repro at
+    320/375/414px (menu inline with the rank/date row, divider intact, no
+    overlap even with a long event name wrapping to two lines below it) and
+    700px (identical to before).
+  - On that same mobile card layout, the Time cell's value (duration +
+    optional GUN/CHIP `.time-type-tag` pill) visually read as centered in
+    its cell rather than sitting flush against the pill, an odd imbalance
+    next to every other cell's value, which hugs the right edge. Root
+    cause: the shared mobile card CSS turns each `<td>` into a flex row
+    (`justify-content: space-between`) between its `::before` label
+    pseudo-element and the cell's content, so the label lands on the left
+    and the content on the right - but this cell's "content" was actually
+    two separate flex items (a bare duration text node, then the tag
+    `<span>`, both direct children of the `<td>`), so `space-between`
+    spread all three items - label, duration, tag - evenly across the row
+    instead of label-vs-(duration+tag). Fixed by wrapping the duration text
+    and the tag span in one shared `<span className="time-cell-value">`,
+    collapsing them into a single flex item that now hugs the cell's right
+    edge as a unit (verified: 0.0px gap between the value and the cell's
+    right edge at 390px, on both this page and the leaderboard). Applied
+    the identical fix to the leaderboard's Time cell
+    (`LeaderboardPage.jsx`) too, since it shares the exact same markup
+    pattern and the exact same bug, even though only this page's version
+    was reported; desktop's plain table layout is unaffected on both pages
+    since the flex rule is scoped to the sub-600px card breakpoint.
+- **Event names** (`event_name` on `runs`, free text, optional, 200 char cap)
+  — typed in on `/submit`, no separate events table. As you type, `GET
+  /api/events/suggest?q=` (`suggest_event_names()`) autocompletes against
+  existing names via a case-insensitive prefix match, ranked by how many
+  runs already use that exact name - the mechanism that keeps everyone
+  converging on one spelling per event instead of "Klang Marathon" /
+  "klang marathon 2026" splintering apart. Private users' runs are excluded
+  from suggestions so a name can never hint at what a private account ran.
+  Shown next to the distance everywhere a run appears (e.g. "5K — Klang
+  Marathon 2026"). A dedicated per-event page (its own mini-leaderboard of
+  everyone who ran that event) was explicitly scoped out as too big for now.
+- **Event date** (`event_date` on `runs`, optional `DATE`, distinct from
+  `created_at` - when the race happened vs. when it was logged, so a run can
+  be entered after the fact) — an optional date input on `/submit` (capped
+  at today; a race can't be in the future), editable later same as event
+  name/time type/result link. Shown as "(Mar 15, 2026)" next to the event
+  name everywhere a run appears - or on its own if there's a date but no
+  name - via `formatEventDate()` in `format.js`, which parses the
+  "YYYY-MM-DD" string's components directly rather than through `new
+  Date(str)` to avoid that reading a bare date as UTC midnight and
+  displaying a day early west of UTC.
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
-  in the URL (shareable links); excludes runs by currently-private users
+  in the URL (shareable links); excludes runs by currently-private users.
+  Top 3 rank badges are gold/silver/bronze (`tbody tr:nth-child(1/2/3)
+  .rank` in `index.css`) rather than a single "highlight the winner" color.
+  `.rank` is always a fixed 24x24 flex box regardless of place, so the
+  rank column's width doesn't vary row to row and names stay aligned
+  down the column — it used to be a plain inline `<span>` with a
+  `min-width` that (being inline) never actually applied, so only rank 1's
+  circle badge had a real fixed width and every other row's name started
+  at a slightly different x-position.
 - **Storage** — PostgreSQL (was SQLite pre-restructure)
-- **Design system** — light, welcoming palette (cream/charcoal/teal accent),
+- **Design system** — light, welcoming palette (cream/charcoal/Tyrian purple
+  accent),
   WCAG AA contrast-checked; re-themed from an earlier dark/orange version.
   Type: Inter (body), Inter Tight (headings only, tighter optical sizing for
   large text), Space Mono (all numerals/times, the signature element) - fluid
@@ -146,6 +740,115 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   leaderboard table becomes labeled cards below 600px instead of hiding a
   column (`data-label` attributes in `LeaderboardPage.jsx`, CSS-only card
   layout). Documented at the top of `frontend/src/index.css`.
+- **Favicon** (`frontend/public/favicon.svg` + `favicon-32x32.png` +
+  `apple-touch-icon.png`) — previously there was no favicon at all (no
+  `<link rel="icon">` in `index.html`, browser default tab icon). Requested
+  as "an AP logo"; the app's actual wordmark is CSS-styled text, not an
+  image asset, so there was nothing to crop/reuse - built as a new small
+  monogram mark instead: a rounded square in the site's own `--accent`
+  Tyrian purple (`#66023C`, not the share-card's brighter one - this is
+  site chrome, matched to the topbar/buttons instead) with "AP" in bold
+  white, same filled-pill-on-accent convention already used for
+  `.filters a.active`/`.segmented button.active`/etc. Drawn as flat SVG
+  `<text>` (a generic bold sans-serif stack, not the site's Space Mono/
+  Inter Tight webfonts) rather than real vector letterforms or a
+  page-loaded font, since a favicon renders in browser chrome outside the
+  page's own stylesheet context, where a `@font-face` isn't reliably
+  loaded in time (or at all) - correct brand color and legibility matter
+  far more than exact type matching at 16-32px anyway. Checked legibility
+  by rendering the SVG at several sizes down to a true 16x16 (actual browser
+  tab size) via Playwright before finalizing - reads clearly even there.
+  `favicon.svg` is the primary icon (modern evergreen browsers render SVG
+  favicons directly, and it stays crisp at any size); `favicon-32x32.png`
+  and `apple-touch-icon.png` (180x180, Apple's recommended size) are
+  rasterized fallbacks for browsers/contexts that don't support SVG icons
+  or iOS "Add to Home Screen", generated by screenshotting the SVG at exact
+  pixel dimensions rather than hand-exported, so they're guaranteed
+  pixel-faithful to the source. Files live in `frontend/public/`, which
+  Vite copies to the build output root unchanged (unlike `src/assets/`,
+  which gets bundled/hashed) - the right place for anything referenced by
+  a fixed, predictable URL like `index.html`'s `<link>` tags need. Verified
+  post-build that all three files land in `dist/` and serve with correct
+  `Content-Type` headers (`image/svg+xml`, `image/png`) via `vite preview`,
+  not just that the build didn't error.
+- **SEO** (`useDocumentMeta.js` hook + `index.html` baseline tags +
+  `public/{robots.txt,sitemap.xml,og-image.png}`) — there was previously no
+  meta description, no Open Graph/Twitter tags, no sitemap or robots.txt,
+  and a single static `<title>` shared by every route. Asked generally
+  ("how do people do SEO?"), answered with the concrete gaps specific to
+  this app, then built on explicit go-ahead. Key constraint this had to be
+  designed around: this is a client-rendered SPA with no server-side
+  rendering, and a non-JS crawler or link-preview bot (every social/chat
+  unfurler - Twitter, WhatsApp, Slack, Discord, iMessage - none of them
+  execute JavaScript) only ever sees whatever's statically in `index.html`,
+  never anything set later by React. Google's own indexer is the one
+  crawler that *does* execute JS and re-reads the DOM after render, which
+  is what makes per-page dynamic tags worth doing at all here, but it also
+  means true per-page *social share previews* (e.g. a specific runner's
+  profile showing their own stats in a WhatsApp preview) aren't actually
+  achievable without server-side rendering for bots specifically - a
+  separate, bigger feature, not attempted here. Flagged this limitation
+  explicitly rather than silently shipping something that looks like it
+  covers social previews but doesn't.
+  - `index.html` carries the static baseline every bot and the initial
+    paint see: a real title/description, `robots: index, follow`, and
+    `og:*`/`twitter:*` tags including a purpose-built 1200x630 `og-image.png`
+    (the site's actual two-tone Space Mono wordmark on its cream background
+    - not the favicon's high-contrast purple-block treatment, which was
+    designed for 16px legibility, not a large share-card image; generated
+    once via a Playwright screenshot of an HTML page with the real Google
+    Fonts loaded, unlike the favicon which can't rely on webfonts loading
+    inside browser chrome). This baseline alone is a real improvement even
+    with nothing else: every shared AvgPace link now gets a correct, on-
+    brand preview instead of nothing/broken, everywhere non-JS bots look.
+  - `useDocumentMeta({ title, description, noindex })` (one `useEffect`,
+    called from each page) overwrites `document.title` and those same meta
+    tags by selector once data is available, composing page-specific titles
+    as `"{page title} — AvgPace"` (Home keeps its own full marketing title
+    rather than being suffixed). Wired into all 7 pages with content
+    specific to what's actually on each one - e.g. the leaderboard's title
+    tracks the selected distance (`"Marathon Leaderboard — AvgPace"`, not a
+    static "Leaderboard"), since that's genuinely different searchable
+    content per distance, not just a cosmetic label.
+  - `noindex` (renders `<meta name="robots" content="noindex, nofollow">`)
+    is set on: `/admin` (always - an admin queue has no business in search
+    results, and this was set unconditionally before the `isAdmin` branch
+    so it applies even to the "Not authorized" view a non-admin sees), a
+    private profile (`profile.is_private` - the content's already
+    follow-gated, no reason to also have the profile URL indexed), and
+    follower/following list pages (always - thin listings of avatar links,
+    not useful search-landing content regardless of privacy). Verified all
+    of this with mocked routes/auth per page: correct title+description on
+    every route, `index, follow` by default, `noindex, nofollow` on exactly
+    those three cases and nowhere else.
+  - `robots.txt` (`Disallow: /admin`, points to the sitemap) and
+    `sitemap.xml` cover the app's static routes (home, the 4 leaderboard
+    distances, submit) - called "basic" when proposed and kept that way
+    deliberately. A complete sitemap would also list every public user's
+    profile, which needs a backend endpoint to enumerate non-private
+    usernames and is a meaningfully bigger feature than what was asked for
+    ("a basic sitemap.xml"); noted as a natural follow-up rather than built
+    unprompted.
+  - No `<link rel="canonical">` tags - the leaderboard's query-string
+    variants (`?distance=&tier=`) make the "right" canonical URL per
+    combination genuinely ambiguous (e.g. does `?tier=green` canonicalize
+    to itself or to the untiered page?), and canonical tags weren't part of
+    what was asked for; skipped rather than guessed at.
+- **Loading state** (`RunningLoader.jsx`) — a small stopwatch Lottie
+  animation (`src/assets/timer-loader.json`, recolored from its original
+  black to the `--accent` brand color) rendered via `lottie-web`'s light
+  build (`lottie-web/build/player/lottie_light`, no expressions parser,
+  smaller than the full build), shown wherever a page currently renders
+  nothing while its data loads: the feed, a profile, the leaderboard, the
+  Best Efforts drill-down, and follower/following lists. The JSON asset is
+  bundled locally (not fetched from a CDN at runtime) so the loading
+  indicator itself never depends on an external network call. Always
+  autoplays regardless of `prefers-reduced-motion` - an earlier version
+  froze it on that setting (matching how the previous hand-rolled SVG
+  runner behaved), but a small self-contained "something is loading" spinner
+  is functional UI, not the large-scale decorative motion (parallax,
+  auto-scroll) that setting exists to suppress, and freezing it just reads
+  as broken on a device with that setting on.
 
 ## Known gaps / not yet built
 
@@ -177,8 +880,8 @@ These were flagged as important before showing this to real users:
    was already stored as free text) but aren't "claimed" by any profile.
    Fine at this scale; would need a decision if this ever had real users
    before auth existed.
-8. **No notifications** — following someone or having someone comment/like
-   (likes don't exist yet either) triggers nothing. Feed/profile are
+8. **No notifications** — following someone, or having someone vouch for,
+   like, or comment on your post, triggers nothing. Feed/profile are
    pull-only; you find out by checking.
 9. **Feed and profile posts have no pagination** — `get_feed()` and
    `get_posts_for_user()` in `database.py` return a fixed `LIMIT` (50/100)
@@ -215,50 +918,80 @@ Free tier, three services (see `DEPLOY.md` for the from-scratch setup):
 
 - **Frontend** — Netlify, `https://averagepace.netlify.app`
 - **Backend** — Render, `https://averagepace-api.onrender.com` (free plan
-  sleeps after 15 min idle; first request after that takes ~30-50s)
-- **Database** — Neon Postgres
+  sleeps after 15 min idle; first request after that takes ~30-50s). Kept
+  warm by `.github/workflows/keep-alive.yml`, a scheduled GitHub Action
+  (`*/10 * * * *`, well inside the 15-min window) that curls `/api/health`.
+  Chose a GitHub Action over Render's own Cron Job service since it's free
+  regardless of plan/usage, versioned with the code, and doesn't depend on
+  any one chat session staying alive; also runnable on demand via
+  `workflow_dispatch`. Neon's own autosuspend (below) still applies
+  independently, but wakes in ~1-2s so it's not the one worth ping-guarding.
+- **Database** — Neon Postgres (autoscaling, autosuspends after a few
+  minutes idle - fast to resume, not the source of the noticeable cold
+  start above)
 
 `CORS_ORIGINS` on Render must match the Netlify URL exactly or every fetch
 from the frontend fails with a generic "Failed to fetch" (bitten by this
 twice — always curl an OPTIONS preflight to confirm before assuming the
 frontend/backend code itself is broken).
 
+`ADMIN_EMAILS` on Render (comma-separated) is what makes someone an admin -
+applied inside `init_db()`, which runs once at process start, so it only
+takes effect for an email that already has a user row (i.e. has signed in
+at least once) as of the *next* deploy/restart after the env var is set or
+changed.
+
 ## Files
 
 ```
 backend/
-  main.py              — FastAPI app + routes (health, auth, upload, leaderboard, feed, posts, users/follow)
+  main.py              — FastAPI app + routes (health, auth, upload, leaderboard, feed, posts,
+                           users/follow, admin review queue)
   auth.py               — Google ID token verification, session JWT issue/verify,
-                           get_current_user (required) / get_current_user_optional (public-but-auth-aware)
-  trust_score.py        — GPX analysis (green/yellow/red), linked_result() (official-link
-                           submissions, always yellow), unverified_result() (bare claims, red)
-  database.py           — Postgres schema + queries (runs incl. result_url, users, follows
+                           get_current_user (required) / get_current_user_optional
+                           (public-but-auth-aware) / get_current_admin_user (403s non-admins)
+  trust_score.py        — GPX analysis (yellow/red, capped - green is admin-only now),
+                           linked_result() (official-link submissions, always yellow),
+                           unverified_result() (bare claims, red)
+  database.py           — Postgres schema + queries (runs incl. result_url and
+                           verified_by_admin_id/verified_at, users incl. is_admin, follows
                            w/ pending/accepted status, posts)
   requirements.txt
-  .env.example           — DATABASE_URL, CORS_ORIGINS, GOOGLE_CLIENT_ID, SESSION_SECRET
+  .env.example           — DATABASE_URL, CORS_ORIGINS, GOOGLE_CLIENT_ID, SESSION_SECRET,
+                           ADMIN_EMAILS
 frontend/
   src/
     main.jsx             — React entry point, router + AuthProvider setup
-    App.jsx               — top nav (Home/Submit/Leaderboard/Profile+sign-out) + route table
+    App.jsx               — top nav (Home/Submit/Leaderboard/Profile/Admin-if-admin+sign-out)
+                             + route table
     auth.jsx              — AuthContext: token/user state, localStorage persistence
     api.js                — fetch wrapper for the backend API
     format.js              — duration/pace parsing + formatting, live time-input auto-format
+    useDocumentMeta.js      — per-page <title>/meta description/OG/Twitter/robots hook
     index.css              — design system (light theme)
     components/
       GoogleSignInButton.jsx — wraps Google Identity Services' button
       PostCard.jsx            — one feed/profile post: author, timestamp, optional text,
                                  optional embedded run card
+      SearchWidget.jsx        — topbar search icon + dropdown (input, People/Posts/Events
+                                 filter pills, live debounced results)
     pages/
       HomePage.jsx           — `/`, the feed (Following/Everyone tabs + composer)
       UploadPage.jsx          — `/submit`, gated behind sign-in, distance/time + optional
                                  official-result link + optional caption (no GPX picker)
       LeaderboardPage.jsx      — public
-      ProfilePage.jsx          — `/profile/:userId`, any user's profile + follow button
+      ProfilePage.jsx          — `/profile/:username`, any user's profile + follow button
                                  (Follow/Requested/Following); own profile also shows a
                                  privacy toggle and follow-requests inbox
                                  (also exports ProfileRedirect for bare `/profile`)
-      FollowListPage.jsx       — `/profile/:userId/followers` and `/following`
-  index.html             — loads the Google Identity Services script
+      FollowListPage.jsx       — `/profile/:username/followers` and `/following`
+      AdminReviewPage.jsx       — `/admin`, gated on `user.is_admin` (backend still enforces
+                                 it independently); review queue + a Verify button per run
+  index.html             — loads the Google Identity Services script; favicon +
+                           static SEO/OG/Twitter meta tag baseline
+  public/                 — favicon.svg/-32x32.png/apple-touch-icon.png,
+                           og-image.png, robots.txt, sitemap.xml (copied to the
+                           build root as-is, unlike src/assets/)
   package.json
   vite.config.js
   .env.example           — VITE_API_URL, VITE_GOOGLE_CLIENT_ID

@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { fetchLeaderboard } from '../api.js'
 import { formatDuration, formatPace } from '../format.js'
+import ExternalLinkIcon from '../components/ExternalLinkIcon.jsx'
+import RunningLoader from '../components/RunningLoader.jsx'
+import { useDocumentMeta } from '../useDocumentMeta.js'
 
 const DISTANCES = [
   ['5k', '5K'],
@@ -39,14 +42,19 @@ export default function LeaderboardPage() {
 
   const distanceLabel = DISTANCES.find(([key]) => key === distance)?.[1] ?? distance
 
+  useDocumentMeta({
+    title: `${distanceLabel} Leaderboard`,
+    description: `See the fastest verified ${distanceLabel} times on AvgPace, ranked by trust tier - from official chip times to community-vouched results.`,
+  })
+
   return (
     <div className="wrap wide">
       <p className="eyebrow">Finish-line board</p>
       <h1>{distanceLabel} leaderboard</h1>
       <p className="lede">
-        Green means an automated GPS check passed. Yellow means it's backed by
-        an official result link — click ↗ to check it yourself. Red is a bare,
-        unverified claim.
+        Green means our team checked the result link and confirmed it. Yellow
+        means it's backed by an official result link — click through to check
+        it yourself. Red is a bare, unverified claim.
       </p>
 
       <div className="filters">
@@ -77,6 +85,8 @@ export default function LeaderboardPage() {
 
       {error && <div className="banner err">{error}</div>}
 
+      {loading && <RunningLoader />}
+
       {!loading && !error && rows.length > 0 && (
         <table>
           <thead>
@@ -94,22 +104,32 @@ export default function LeaderboardPage() {
                   <span className="rank">{i + 1}</span>
                   <span>{row.runner_name}</span>
                 </td>
-                <td className="time-cell" data-label="Time">{formatDuration(row.duration_s)}</td>
+                <td className="time-cell" data-label="Time">
+                  <span className="time-cell-value">
+                    {formatDuration(row.duration_s)}
+                    {row.time_type && <span className="time-type-tag">{row.time_type}</span>}
+                  </span>
+                </td>
                 <td data-label="Pace">{formatPace(row.pace_sec_per_km)}</td>
                 <td data-label="Trust">
-                  <span className={`tier-dot ${row.tier}`}></span>
-                  {row.tier} · {row.trust_score}
-                  {row.result_url && (
-                    <a
-                      href={row.result_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="post-result-link"
-                      title="View official result"
-                    >
-                      ↗
-                    </a>
-                  )}
+                  <span className="trust-cell-value">
+                    <span className={`tier-dot ${row.tier}`}></span>
+                    {row.tier} · {row.trust_score}
+                    {row.result_url && (
+                      <a
+                        href={row.result_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="post-result-link"
+                        title="View official result"
+                      >
+                        <ExternalLinkIcon />
+                      </a>
+                    )}
+                    {row.vouch_count > 0 && (
+                      <span className="vouch-count-readonly"> · {row.vouch_count} vouched</span>
+                    )}
+                  </span>
                 </td>
               </tr>
             ))}
