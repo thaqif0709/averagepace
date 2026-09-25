@@ -431,6 +431,14 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      rather than silently shipping it, since it's a real functional gap in
      a bright-photo case, not just a style opinion; left as-is pending their
      call, since it's what was explicitly asked for.
+  4. The badge showed the bucket label ("MARATHON") - changed to the
+     runner's own entered `distance_km` instead (`formatDistanceKm()`,
+     "42.2KM"), trimming a trailing `.0` for the round-number buckets (5K,
+     10K) but keeping one decimal otherwise (21.1KM, 42.2KM). This is the
+     actual course distance for that specific run, which is also what pace
+     was computed from - more specific and more accurate than a fixed
+     per-bucket label, since real courses don't always run exactly 5.00/
+     10.00/21.10/42.20km.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when

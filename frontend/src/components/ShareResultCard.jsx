@@ -2,7 +2,13 @@ import { useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { formatDuration, formatPace, formatEventDate } from '../format.js'
 
-const DISTANCE_LABELS = { '5k': '5K', '10k': '10K', half: 'HALF MARATHON', marathon: 'MARATHON' }
+// The runner's own entered distance (e.g. a course that ran slightly long),
+// not the bucket's nominal one - "42.2KM" reads as more specific/earned
+// than "MARATHON", and matches what's actually being measured for pace.
+function formatDistanceKm(km) {
+  const rounded = Math.round(km * 10) / 10
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}KM`
+}
 
 // Rendered at this CSS width, then exported at PIXEL_RATIO x for a crisp
 // image - big enough to look sharp resized into an Instagram Story, small
@@ -40,7 +46,7 @@ export default function ShareResultCard({ run, onClose }) {
   const [error, setError] = useState(null)
   const canShareFiles = typeof navigator.canShare === 'function'
 
-  const distance = DISTANCE_LABELS[run.distance_bucket] ?? run.distance_bucket.toUpperCase()
+  const distance = formatDistanceKm(run.distance_km)
 
   async function handleDownload() {
     setBusy(true)
