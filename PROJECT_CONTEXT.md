@@ -195,7 +195,14 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     live data source, update it whenever a record falls; for the two road
     distances we use the mixed-sex-race women's time rather than the
     separate "women-only race" record, since that's the one usually meant
-    by "the world record"). Rather than swapping the digits instantly, the
+    by "the world record"). Labels are deliberately inconsistent, matching
+    what's actually official: track events (5K/10K) are run as genuinely
+    separate "Men's"/"Women's" competitions, so both get that prefix; road
+    records aren't split that way for men (there's no official "Men's
+    Marathon" title, it's just The Record), so those two entries are
+    unprefixed, while "Women's Half Marathon"/"Women's Marathon" still say
+    so since that women's-specific split is real and official. Rather than
+    swapping the digits instantly, the
     clock actually counts from wherever it's currently sitting to the new
     target - forward or backward, whichever direction gets there - over
     1000ms with an ease-out curve, like a stopwatch/odometer physically
