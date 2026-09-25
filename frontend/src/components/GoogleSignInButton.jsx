@@ -14,7 +14,7 @@ export default function GoogleSignInButton() {
     async function handleCredential(response) {
       try {
         const data = await googleLogin(response.credential)
-        login(data.token, data.user)
+        login(data.token, data.user, data.is_new_user)
       } catch (err) {
         console.error('Google sign-in failed', err)
       }

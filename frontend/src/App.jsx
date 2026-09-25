@@ -11,6 +11,7 @@ import BestEffortDetailPage from './pages/BestEffortDetailPage.jsx'
 import AdminReviewPage from './pages/AdminReviewPage.jsx'
 import ChooseUsernameDialog from './components/ChooseUsernameDialog.jsx'
 import SearchWidget from './components/SearchWidget.jsx'
+import { trackPageView } from './analytics.js'
 
 export default function App() {
   const { user, loading, logout } = useAuth()
@@ -20,6 +21,10 @@ export default function App() {
   useEffect(() => {
     setMenuOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    trackPageView(location.pathname + location.search)
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : ''

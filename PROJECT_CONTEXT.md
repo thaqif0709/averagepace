@@ -71,6 +71,24 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   30-day JWT session stored in `localStorage`. Submitting/posting/following
   requires being signed in; viewing the leaderboard, the "Everyone" feed, and
   public profiles doesn't.
+- **Analytics** (GA4, `frontend/src/analytics.js`) — page views, sign-ups,
+  and logins, gated entirely behind `VITE_GA_MEASUREMENT_ID`: every export
+  (`trackPageView`/`identifyUser`/`trackAuthEvent`/`clearUser`) is a no-op
+  when it's unset, so local dev and any environment that hasn't configured
+  it send nothing. The gtag.js snippet loads lazily on first use rather than
+  from a `<script>` tag in `index.html`, so that gating is possible at all.
+  Since this is a client-routed SPA, gtag's own automatic pageview is
+  disabled (`send_page_view: false`) and `App.jsx` fires `page_view` itself
+  on every `useLocation()` change instead - otherwise the first page would
+  double-count. `identifyUser` calls GA4's User-ID feature with our own
+  numeric `user.id` (never email/name) so "new users" reflects distinct
+  accounts rather than distinct browsers. Telling a fresh signup apart from
+  a returning login needed a backend change: `upsert_user()`'s `INSERT ...
+  ON CONFLICT DO UPDATE` now also returns `(xmax = 0) AS is_new_user` - the
+  standard trick for reading which branch an upsert took from its own
+  `RETURNING` clause - and `/api/auth/google` passes that through
+  (popped off the `user` object, returned as a sibling `is_new_user` field)
+  so the frontend fires GA4's `sign_up` or `login` event correctly.
 - **Usernames** (`users.username`, nullable TEXT) — a stable, human-chosen
   handle. `users.id` stays the real internal identifier (every FK - follows,
   posts, runs, vouches, likes - still points at that numeric id), but

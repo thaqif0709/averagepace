@@ -137,8 +137,9 @@ def google_login(body: dict = Body(...)):
         name=claims.get("name") or claims["email"],
         avatar_url=claims.get("picture"),
     )
+    is_new_user = user.pop("is_new_user")
     token = issue_session_token(user["id"])
-    return {"token": token, "user": user}
+    return {"token": token, "user": user, "is_new_user": is_new_user}
 
 
 @app.get("/api/auth/me")

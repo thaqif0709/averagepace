@@ -160,6 +160,9 @@ def upsert_user(google_sub, email, name, avatar_url):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # xmax = 0 means this row was just inserted, not touched by the
+            # ON CONFLICT UPDATE branch - the standard way to tell which
+            # branch an upsert took from its own RETURNING clause.
             cur.execute("""
                 INSERT INTO users (google_sub, email, name, avatar_url)
                 VALUES (%s, %s, %s, %s)
@@ -167,7 +170,7 @@ def upsert_user(google_sub, email, name, avatar_url):
                     email = EXCLUDED.email,
                     name = EXCLUDED.name,
                     avatar_url = EXCLUDED.avatar_url
-                RETURNING id, google_sub, email, name, avatar_url, is_admin, username
+                RETURNING id, google_sub, email, name, avatar_url, is_admin, username, (xmax = 0) AS is_new_user
             """, (google_sub, email, name, avatar_url))
             user = cur.fetchone()
         conn.commit()
