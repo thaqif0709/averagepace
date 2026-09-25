@@ -821,14 +821,31 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     of this with mocked routes/auth per page: correct title+description on
     every route, `index, follow` by default, `noindex, nofollow` on exactly
     those three cases and nowhere else.
-  - `robots.txt` (`Disallow: /admin`, points to the sitemap) and
-    `sitemap.xml` cover the app's static routes (home, the 4 leaderboard
-    distances, submit) - called "basic" when proposed and kept that way
-    deliberately. A complete sitemap would also list every public user's
-    profile, which needs a backend endpoint to enumerate non-private
-    usernames and is a meaningfully bigger feature than what was asked for
-    ("a basic sitemap.xml"); noted as a natural follow-up rather than built
-    unprompted.
+  - `robots.txt` (`Disallow: /admin`, points to the sitemap) covers static
+    crawl policy. `sitemap.xml` started out static (just home, the 4
+    leaderboard distances, submit) - called "basic" and kept that way
+    deliberately at first, with every public user's profile noted as a
+    follow-up rather than built unprompted, since that needed a real backend
+    endpoint. Built as that follow-up once asked for explicitly:
+    `GET /api/sitemap.xml` (`main.py`) renders the same static URL list plus
+    `/profile/{username}` for everyone `get_public_usernames()`
+    (`database.py`: `is_private = FALSE AND username IS NOT NULL`) returns -
+    a private profile is correctly never listed, and a signed-up-but-no-
+    username-yet account (the `ChooseUsernameDialog` gate) can't be either,
+    since there's nothing to link to. Always current - no build step, no
+    staleness window between deploys, unlike the static-file approach.
+    Not served directly from the backend's own domain, though: the
+    sitemap protocol only allows a sitemap to list URLs at or below its own
+    location, so a sitemap hosted at `averagepace-api.onrender.com` could
+    never validly list `averagepace.netlify.app/...` URLs. Fixed with a
+    Netlify proxy redirect (`netlify.toml`, `/sitemap.xml` ->
+    `.../api/sitemap.xml`, `status = 200` so it rewrites rather than
+    redirecting the visible URL) - crawlers requesting
+    `averagepace.netlify.app/sitemap.xml` transparently get the backend's
+    live-generated XML, same-origin, satisfying the protocol. Needed the old
+    static `public/sitemap.xml` removed too - Netlify serves an existing
+    static file before evaluating non-`force` redirects, so the file would
+    otherwise have kept shadowing the proxy rule forever.
   - No `<link rel="canonical">` tags - the leaderboard's query-string
     variants (`?distance=&tier=`) make the "right" canonical URL per
     combination genuinely ambiguous (e.g. does `?tier=green` canonicalize
@@ -945,8 +962,8 @@ changed.
 
 ```
 backend/
-  main.py              — FastAPI app + routes (health, auth, upload, leaderboard, feed, posts,
-                           users/follow, admin review queue)
+  main.py              — FastAPI app + routes (health, sitemap.xml, auth, upload, leaderboard,
+                           feed, posts, users/follow, admin review queue)
   auth.py               — Google ID token verification, session JWT issue/verify,
                            get_current_user (required) / get_current_user_optional
                            (public-but-auth-aware) / get_current_admin_user (403s non-admins)

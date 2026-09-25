@@ -239,6 +239,19 @@ def is_username_taken(username, exclude_user_id=None):
         conn.close()
 
 
+def get_public_usernames():
+    """Every username visible to a logged-out visitor - non-private accounts
+    that have actually chosen one (it's optional until then). Used to build
+    the sitemap, so private profiles are correctly never listed."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT username FROM users WHERE is_private = FALSE AND username IS NOT NULL")
+            return [row[0] for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 def set_username(user_id, username):
     """Sets this user's username. Returns the updated user row, or None if
     that username (case-insensitively) is already taken by someone else -

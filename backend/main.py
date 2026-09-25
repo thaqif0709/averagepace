@@ -9,6 +9,7 @@ load_dotenv()
 
 from fastapi import Body, Depends, FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from auth import get_current_admin_user, get_current_user, get_current_user_optional, issue_session_token, verify_google_credential
 from database import (
@@ -29,6 +30,7 @@ from database import (
     get_like_count,
     get_pending_follow_requests,
     get_posts_for_user,
+    get_public_usernames,
     get_recently_verified,
     get_review_queue,
     get_user_by_id,
@@ -69,6 +71,21 @@ app.add_middleware(
 
 DISTANCE_LABELS = {"5k": "5K", "10k": "10K", "half": "Half Marathon", "marathon": "Marathon"}
 USERNAME_RE = re.compile(r"^(?=.*[A-Za-z_])[A-Za-z0-9_]{3,20}$")
+
+# The frontend's own origin, not this API's - sitemap <loc> entries must
+# point at the actual pages (Netlify), and the sitemap protocol requires a
+# sitemap to only list URLs at or below its own location, so this file is
+# proxied to appear at that origin's /sitemap.xml (see netlify.toml)
+# rather than served directly from here.
+SITE_URL = "https://averagepace.netlify.app"
+STATIC_SITEMAP_URLS = [
+    ("/", "daily", "1.0"),
+    ("/leaderboard", "daily", "0.9"),
+    ("/leaderboard?distance=10k", "daily", "0.7"),
+    ("/leaderboard?distance=half", "daily", "0.7"),
+    ("/leaderboard?distance=marathon", "daily", "0.7"),
+    ("/submit", "monthly", "0.5"),
+]
 
 init_db()
 
@@ -119,6 +136,23 @@ def clean_run_metadata(event_name, time_type, result_url, event_date):
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/sitemap.xml")
+def sitemap():
+    urls = list(STATIC_SITEMAP_URLS)
+    urls += [(f"/profile/{username}", "weekly", "0.6") for username in get_public_usernames()]
+
+    entries = "".join(
+        f"<url><loc>{SITE_URL}{path}</loc><changefreq>{changefreq}</changefreq><priority>{priority}</priority></url>"
+        for path, changefreq, priority in urls
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{entries}</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
 
 
 @app.post("/api/auth/google")
