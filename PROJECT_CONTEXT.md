@@ -566,6 +566,9 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
       in-app copy, and renaming them is a separate, riskier undertaking
       (broken bookmarks/links, service renames) than editing a few lines
       of JSX.
+  13. That same hero lede's "the orange app" (an unnamed dig at the
+      paywalled incumbent) now reads `the "orange app"`, quoted - a small
+      punctuation tweak, no rationale beyond the explicit ask.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when

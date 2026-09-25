@@ -99,7 +99,7 @@ export default function HomePage() {
                 for every race — one for the marathon, another for last
                 month's local 10K. AvgPace pulls them into a single
                 running history: paste the link, log the time, done. The
-                orange app keeps your best-effort history behind a
+                "orange app" keeps your best-effort history behind a
                 subscription. We don't — your data should be free.
               </p>
               <div className="hero-actions">
