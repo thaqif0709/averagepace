@@ -28,9 +28,15 @@ const SEPARATOR = '   •   '
 // than a wide desktop one, since the same absolute speed covers a bigger
 // fraction of a small screen every second. This targets "one
 // container-width of text scrolls by every ~26.7s" (tuned against a
-// ~1280px desktop view feeling right), so the felt pace stays the same at
-// any screen size.
+// ~1280px desktop view feeling right).
 const SECONDS_PER_CONTAINER_WIDTH = 1280 / 48
+// ...but matching that relative pace exactly made phone-width screens feel
+// sluggish on their own terms (14.6px/s at 390px) - a ticker apparently
+// wants a brisker floor regardless of how little screen it's crossing.
+// This only raises the speed on viewports narrower than ~640px; anything
+// at or above that already clears the floor from the formula above, so
+// desktop is untouched.
+const MIN_PIXELS_PER_SECOND = 24
 
 function activityMessage(post) {
   const distance = DISTANCE_LABELS[post.distance_bucket] ?? post.distance_bucket.toUpperCase()
@@ -63,7 +69,7 @@ export default function ActivityMarquee({ posts }) {
     function applySpeed() {
       const oneCopyWidth = trackEl.scrollWidth / 2
       const containerWidth = trackEl.parentElement.clientWidth
-      const speed = containerWidth / SECONDS_PER_CONTAINER_WIDTH
+      const speed = Math.max(containerWidth / SECONDS_PER_CONTAINER_WIDTH, MIN_PIXELS_PER_SECOND)
       trackEl.style.setProperty('--marquee-duration', `${oneCopyWidth / speed}s`)
     }
 

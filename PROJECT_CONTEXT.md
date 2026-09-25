@@ -252,7 +252,12 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     `animation` rules) to `trackWidth / (containerWidth / 26.7)`, and a
     `ResizeObserver` on the container re-applies it on any size change
     (window resize, phone rotation) so it doesn't go stale after mount.
-    Runs before the first paint - no flash of the wrong speed.
+    Runs before the first paint - no flash of the wrong speed. That relative
+    pace alone made phone-width screens feel sluggish on their own terms
+    (~14.6px/s at 390px), so the speed is also floored at 24px/s - below
+    that, `Math.max` takes over; above ~640px-wide containers the
+    proportional formula already clears the floor on its own, so desktop is
+    unaffected.
   - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),
