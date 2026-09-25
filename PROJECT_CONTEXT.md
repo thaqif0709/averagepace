@@ -851,6 +851,15 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     combination genuinely ambiguous (e.g. does `?tier=green` canonicalize
     to itself or to the untiered page?), and canonical tags weren't part of
     what was asked for; skipped rather than guessed at.
+  - Google Search Console: verified as a URL-prefix property (not a Domain
+    property, which needs a DNS TXT record - not available for a
+    `netlify.app` subdomain the user doesn't control DNS for) via a static
+    `<meta name="google-site-verification">` tag in `index.html`, then the
+    dynamic `sitemap.xml` submitted there. Deliberately not deferred until
+    a possible future custom domain - indexing has real lead time after
+    submission, waiting only delays that clock for no benefit, and Search
+    Console's own "Change of Address" tool exists specifically to carry a
+    verified property's signals over to a new domain later.
 - **Loading state** (`RunningLoader.jsx`) — a small stopwatch Lottie
   animation (`src/assets/timer-loader.json`, recolored from its original
   black to the `--accent` brand color) rendered via `lottie-web`'s light
