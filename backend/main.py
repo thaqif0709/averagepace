@@ -57,7 +57,7 @@ from database import (
 )
 from trust_score import analyze_gpx_bytes, linked_result, unverified_result
 
-app = FastAPI(title="Averagepace API")
+app = FastAPI(title="AveragePace API")
 
 origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")]
 app.add_middleware(

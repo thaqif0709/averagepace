@@ -144,7 +144,7 @@ export default function SearchWidget() {
         <div className="search-panel">
           <input
             type="text"
-            placeholder="Search Averagepace..."
+            placeholder="Search AveragePace..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus

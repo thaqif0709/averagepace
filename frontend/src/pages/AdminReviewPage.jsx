@@ -140,7 +140,7 @@ export default function AdminReviewPage() {
       <div className="wrap wide">
         <p className="eyebrow">Admin</p>
         <h1>Not authorized</h1>
-        <p className="lede">This page is only available to Averagepace admins.</p>
+        <p className="lede">This page is only available to AveragePace admins.</p>
       </div>
     )
   }
