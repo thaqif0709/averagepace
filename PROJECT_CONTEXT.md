@@ -478,6 +478,40 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      them into a single..." line on the homepage) stays as full prose, per
      an explicit "the copy should be fine" - only the two places that
      function as *the logo* changed.
+  9. Real bug, caught by the user, not by testing: the export wasn't
+     centered - a Playwright measurement of the actual exported file's
+     content bounding box found the content sitting at x=316-934 in a
+     1440px-wide canvas (left margin 316px, right margin 506px - a 190px
+     imbalance), not the badge/text being crammed together, which is what
+     it looks like at a glance. Root cause: the `flex: 1` added for the
+     "fill the whole preview" fix in round 3 made `.share-card`'s *live*
+     on-screen width context-dependent (measured 416px in a 1280px-wide
+     browser), while `exportCard()` still unconditionally requested
+     `width: CARD_WIDTH` (480) from `toPng` - confirmed directly via
+     `getBoundingClientRect()` on the live node. `html-to-image` doesn't
+     reconcile that gap by centering or rescaling the content; it renders
+     as if still laid out at the narrower live width inside a canvas
+     stretched to the requested one, leaving the leftover space stacked on
+     one side. (64px CSS-px gap x pixelRatio 3 = 192px, matching the
+     measured 190px almost exactly - strong confirmation, not a
+     coincidence.) Fixed at the root rather than patched: `.share-card`
+     now always stays laid out at its true, constant `CARD_WIDTH` (offset-
+     width unaffected by CSS transforms), and the "shrink to fit a narrow
+     modal" behavior moved to a purely visual `transform: scale()` sized
+     against a `.share-card-scale-wrapper` (its width/height set in JS to
+     the card's real, unscaled size x the display scale, so it reserves
+     only as much layout space as the shrunk card visually occupies -
+     computed via the same `useLayoutEffect` + `ResizeObserver` pattern
+     already used in `WorldRecordTicker.jsx`/`ActivityMarquee.jsx`).
+     `exportCard()`'s `style` override now also strips the transform
+     (`transform: 'none'`) on top of the existing `backgroundColor`
+     override, so the export always renders at the true full width the
+     `width` option already requests - the two can no longer disagree, on
+     any screen size. Verified via the same bounding-box measurement this
+     time at both 1280px and 390px: left/right margins now 412px/410px
+     (a 2px difference, essentially exact) at both, and the mobile export
+     still comes out full-resolution (1440px wide, not shrunk to match the
+     smaller on-screen preview) exactly as before.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when

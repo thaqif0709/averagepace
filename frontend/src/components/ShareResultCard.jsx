@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { formatDuration, formatPace, formatEventDate } from '../format.js'
 
@@ -31,22 +31,54 @@ async function exportCard(node) {
     // renders correctly either way - the embedding step only matters for
     // reusing the intermediate SVG outside this page, which nothing here does.
     skipFonts: true,
-    // .share-card's dark tint is a preview-only convenience (contrast
-    // against the checkerboard, not part of the design) - stripped here so
-    // the downloaded file is genuinely transparent, not just mostly. This
-    // overrides the style on html-to-image's clone of the node, never the
-    // live DOM, so the on-screen preview is untouched.
-    style: { backgroundColor: 'transparent' },
+    style: {
+      // .share-card's dark tint is a preview-only convenience (contrast
+      // against the checkerboard, not part of the design) - stripped here
+      // so the downloaded file is genuinely transparent, not just mostly.
+      backgroundColor: 'transparent',
+      // The live node is scaled down on narrow screens to fit the modal
+      // (see the ResizeObserver below) - stripping that here forces the
+      // clone back to its true, full 480px layout width, matching the
+      // `width` option above exactly. Without this, the clone renders as
+      // if it were still the shrunk-down on-screen size while the output
+      // canvas is stretched to 480px regardless, leaving the real content
+      // squeezed into one corner instead of centered in the export.
+      transform: 'none',
+    },
   })
 }
 
 export default function ShareResultCard({ run, onClose }) {
   const cardRef = useRef(null)
+  const previewRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [scale, setScale] = useState(1)
+  const [naturalSize, setNaturalSize] = useState({ width: CARD_WIDTH, height: CARD_WIDTH })
   const canShareFiles = typeof navigator.canShare === 'function'
 
   const distance = formatDistanceKm(run.distance_km)
+
+  // .share-card always stays laid out at its true CARD_WIDTH (see the
+  // export note above for why) - on narrow screens it's shrunk purely
+  // visually via a CSS transform, sized against a wrapper set to match, so
+  // it still fits the modal without ever changing the card's real layout
+  // width. Runs before paint so there's no flash of an oversized card.
+  useLayoutEffect(() => {
+    const cardEl = cardRef.current
+    const previewEl = previewRef.current
+    if (!cardEl || !previewEl) return
+
+    setNaturalSize({ width: cardEl.offsetWidth, height: cardEl.offsetHeight })
+
+    function applyScale() {
+      setScale(Math.min(1, previewEl.clientWidth / CARD_WIDTH))
+    }
+    applyScale()
+    const observer = new ResizeObserver(applyScale)
+    observer.observe(previewEl)
+    return () => observer.disconnect()
+  }, [])
 
   async function handleDownload() {
     setBusy(true)
@@ -91,20 +123,29 @@ export default function ShareResultCard({ run, onClose }) {
         </button>
         <h2>Share this result</h2>
 
-        <div className="share-card-preview">
-          <div className="share-card" ref={cardRef} style={{ width: CARD_WIDTH }}>
-            <div className="share-card-panel">
-              <span className="share-card-badge">{distance}</span>
-              <div className="share-card-time">{formatDuration(run.duration_s)}</div>
-              <div className="share-card-pace">{formatPace(run.pace_sec_per_km)}</div>
-              {(run.event_name || run.event_date) && (
-                <div className="share-card-event">
-                  {run.event_name}
-                  {run.event_name && run.event_date && ' · '}
-                  {run.event_date && formatEventDate(run.event_date)}
-                </div>
-              )}
-              <div className="share-card-brand">Avg<span>Pace</span></div>
+        <div className="share-card-preview" ref={previewRef}>
+          <div
+            className="share-card-scale-wrapper"
+            style={{ width: naturalSize.width * scale, height: naturalSize.height * scale }}
+          >
+            <div
+              className="share-card"
+              ref={cardRef}
+              style={{ width: CARD_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+            >
+              <div className="share-card-panel">
+                <span className="share-card-badge">{distance}</span>
+                <div className="share-card-time">{formatDuration(run.duration_s)}</div>
+                <div className="share-card-pace">{formatPace(run.pace_sec_per_km)}</div>
+                {(run.event_name || run.event_date) && (
+                  <div className="share-card-event">
+                    {run.event_name}
+                    {run.event_name && run.event_date && ' · '}
+                    {run.event_date && formatEventDate(run.event_date)}
+                  </div>
+                )}
+                <div className="share-card-brand">Avg<span>Pace</span></div>
+              </div>
             </div>
           </div>
         </div>

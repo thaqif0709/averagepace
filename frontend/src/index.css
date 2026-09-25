@@ -364,10 +364,24 @@ body {
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
   background-color: #e8e8e8;
 }
+/* Sized in JS to exactly the card's true (unscaled) footprint x its
+   display scale, so it reserves only as much layout space as the visually
+   shrunk card actually occupies - see the ResizeObserver in
+   ShareResultCard.jsx for why the card itself can't just be narrower here. */
+.share-card-scale-wrapper { overflow: hidden; }
 .share-card {
-  max-width: 100%;
-  flex: 1;
-  /* This background is a preview-only convenience against the checkerboard
+  /* Width is fixed (always CARD_WIDTH, set inline) and never shrinks on its
+     own - the visual "fit a narrow modal" shrink is a CSS transform: scale
+     applied on top, purely cosmetic. A flexible/max-width-capped width here
+     previously meant the live on-screen render (e.g. 416px in a modal with
+     less room) silently drifted from the CARD_WIDTH the export always
+     requests - html-to-image then rendered as if still laid out at the
+     narrower live width while stretching the output canvas to the
+     requested one, leaving the real content off-center instead of
+     centered in the extra space. Keeping the true width constant (and
+     stripping the transform at export time) means the two can never
+     disagree again, on any screen size.
+     This background is a preview-only convenience against the checkerboard
      above - stripped out at export time (see exportCard's `style` override)
      so the downloaded file is genuinely transparent, not just mostly. */
   background: rgba(10,8,8,0.45);
