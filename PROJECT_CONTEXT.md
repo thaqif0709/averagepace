@@ -411,6 +411,26 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      own `--accent` wordmark color, `#66023C`, just lifted from L=20% to
      L=42% for a pop against the dark panel rather than picking an
      unrelated color).
+  3. Turned out the dark panel from round 2 was only ever meant for the
+     *preview* - "the card is just to contrast the white and the squares of
+     the transparent background," not something that should end up in the
+     downloaded file. Restructured so the tint lives on `.share-card`
+     itself (the exact node `toPng` captures) rather than a nested
+     `.share-card-panel`, sized with `flex:1` inside `.share-card-preview`
+     so it fills that box exactly (0px gap on all sides, measured) instead
+     of floating smaller with checkerboard showing around it - and at
+     export time, `toPng`'s own `style` override (applied to its clone of
+     the node, never the live DOM) sets `backgroundColor: 'transparent'`,
+     so the live preview keeps its dark tint but the downloaded PNG is
+     genuinely, fully transparent (verified: center alpha 0 vs. round 2's
+     115). That reopens round 1's legibility problem for the white/cream
+     text specifically - confirmed by compositing the no-panel export over
+     both a mid-tone photo (still fine, busy colors carry their own
+     contrast) and a plain light one (the time, the card's actual point,
+     is nearly unreadable) - flagged to the user with both composites
+     rather than silently shipping it, since it's a real functional gap in
+     a bright-photo case, not just a style opinion; left as-is pending their
+     call, since it's what was explicitly asked for.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when

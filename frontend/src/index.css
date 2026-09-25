@@ -322,11 +322,13 @@ body {
 .share-card-preview {
   display: flex;
   justify-content: center;
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   margin-bottom: 16px;
-  border-radius: var(--radius-md);
-  /* Checkerboard so a genuinely transparent export is visibly transparent
-     in the preview too, not just "looks dark" by coincidence. */
+  /* Checkerboard exists purely so the preview reads as "transparent" at a
+     glance - the card itself (below) fills this box edge to edge, so none
+     of this is ever actually visible behind it. It's a preview cue, not
+     part of the design. */
   background-image:
     linear-gradient(45deg, #ccc 25%, transparent 25%),
     linear-gradient(-45deg, #ccc 25%, transparent 25%),
@@ -336,16 +338,17 @@ body {
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
   background-color: #e8e8e8;
 }
-.share-card { max-width: 100%; }
+.share-card {
+  max-width: 100%;
+  flex: 1;
+  /* This background is a preview-only convenience against the checkerboard
+     above - stripped out at export time (see exportCard's `style` override)
+     so the downloaded file is genuinely transparent, not just mostly. */
+  background: rgba(10,8,8,0.45);
+}
 .share-card-panel {
   padding: 20px 12px;
   text-align: center;
-  border-radius: var(--radius-lg);
-  /* A real but translucent tint (not the original solid panel) - dark
-     enough to carry the text's contrast on its own so the text itself
-     needs no drop shadow, translucent enough that a photo underneath still
-     shows through once this lands on top of it. */
-  background: rgba(10,8,8,0.45);
 }
 .share-card-badge {
   display: inline-block;

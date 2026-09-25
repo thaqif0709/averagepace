@@ -25,9 +25,12 @@ async function exportCard(node) {
     // renders correctly either way - the embedding step only matters for
     // reusing the intermediate SVG outside this page, which nothing here does.
     skipFonts: true,
-    // No backgroundColor set - html-to-image leaves the canvas transparent
-    // where the DOM itself has no fill, which is the whole point: this is
-    // meant to be pasted over a runner's own race photo, not stand alone.
+    // .share-card's dark tint is a preview-only convenience (contrast
+    // against the checkerboard, not part of the design) - stripped here so
+    // the downloaded file is genuinely transparent, not just mostly. This
+    // overrides the style on html-to-image's clone of the node, never the
+    // live DOM, so the on-screen preview is untouched.
+    style: { backgroundColor: 'transparent' },
   })
 }
 
