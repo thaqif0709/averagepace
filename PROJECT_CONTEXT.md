@@ -512,6 +512,20 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      (a 2px difference, essentially exact) at both, and the mobile export
      still comes out full-resolution (1440px wide, not shrunk to match the
      smaller on-screen preview) exactly as before.
+  10. Two small polish passes: `.share-card-panel`'s vertical padding went
+      20px -> 40px (the top/bottom breathing room read as cramped; left/
+      right untouched since that wasn't the complaint) - the card's dynamic
+      height measurement (`cardEl.offsetHeight` in the `useLayoutEffect`
+      from fix 9) picks this up automatically, so nothing else needed to
+      change for the scale-wrapper or the export to stay in sync. And the
+      close `×` moved from top-left to top-right, which also let a
+      `.modal.share-modal { padding-top: 56px }` override from fix 6 come
+      back out entirely: that padding only existed to keep the button clear
+      of the "Share this result" heading below it; on the right, the button
+      sits inline with the heading's own row instead (measured: "Share this
+      result" itself is only ~169px wide against a 416px-wide modal, so
+      there's no realistic heading length here that would reach far enough
+      right to collide - reverting to the plain `.modal` padding is safe).
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when

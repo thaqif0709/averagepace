@@ -318,16 +318,11 @@ body {
 .modal .lede { margin-bottom: 24px; }
 
 .share-modal { max-width: 480px; position: relative; }
-/* Two-class selector so this beats the narrower @media (max-width: 640px)
-   .modal { padding: 22px } reset below on specificity, not source order -
-   otherwise the room made for .modal-close-x collapses back on mobile,
-   exactly where the button most needs it. */
-.modal.share-modal { padding-top: 56px; }
 .share-modal h2 { margin: 0 0 16px; }
 .modal-close-x {
   position: absolute;
   top: 16px;
-  left: 16px;
+  right: 16px;
   width: 32px;
   height: 32px;
   display: flex;
@@ -387,7 +382,7 @@ body {
   background: rgba(10,8,8,0.45);
 }
 .share-card-panel {
-  padding: 20px 12px;
+  padding: 40px 12px;
   text-align: center;
 }
 .share-card-badge {
