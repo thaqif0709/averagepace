@@ -477,7 +477,10 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
      search placeholder, the admin-only notice, the "AveragePace pulls
      them into a single..." line on the homepage) stays as full prose, per
      an explicit "the copy should be fine" - only the two places that
-     function as *the logo* changed.
+     function as *the logo* changed. (Revisited in point 12 below - once
+     the logo itself read "AvgPace", the remaining "AveragePace" prose
+     started to read as an unfinished rebrand rather than a deliberate
+     longer name, so those 3 spots were swapped too.)
   9. Real bug, caught by the user, not by testing: the export wasn't
      centered - a Playwright measurement of the actual exported file's
      content bounding box found the content sitting at x=316-934 in a
@@ -549,6 +552,20 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
       Playwright that the rendered `.modal-overlay`'s DOM parent is
       `<body>`, not nested inside the `<table>`, and that the menu now
       reads `['Share', 'Edit', 'Delete']` in that order.
+  12. The 3 remaining "AveragePace" body-copy spots deliberately left alone
+      in point 8 (`HomePage.jsx`'s hero lede, `AdminReviewPage.jsx`'s
+      not-authorized notice, `SearchWidget.jsx`'s search placeholder) were
+      switched to "AvgPace" as a follow-up - asked explicitly, not
+      inferred: with the logo already shortened, the two names coexisting
+      in copy read as inconsistent rather than as a considered full-name/
+      short-name split. Straightforward literal text swaps, no CSS or
+      structural changes; confirmed no other "AveragePace" occurrences
+      remain anywhere under `frontend/src`. `README.md`/`DEPLOY.md` and the
+      actual infra (Netlify site name, GitHub repo, backend hostname) were
+      explicitly out of scope - those are the project's identity, not
+      in-app copy, and renaming them is a separate, riskier undertaking
+      (broken bookmarks/links, service renames) than editing a few lines
+      of JSX.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when
