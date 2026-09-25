@@ -240,14 +240,19 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     win the cascade on purpose: it redeclares the full `animation` shorthand
     on `.activity-marquee-track` with `!important`, which beats the global
     rule's `!important` on `*` because a class selector is more specific
-    than the universal one. Scroll speed is a fixed 48px/s, not a fixed
-    duration - the padding above means the track's real length varies a
-    lot (short fallback-only list vs. 8 real messages), and a hardcoded
-    duration made the padded version scroll noticeably faster than before
-    the padding existed. A `useLayoutEffect` measures the rendered track's
-    actual width once mounted and sets `--marquee-duration` (read by both
-    the normal and reduced-motion `animation` rules) to `width / 48`, so it
-    runs before the first paint - no flash of the wrong speed.
+    than the universal one. Scroll speed is calibrated relative to the
+    container's width, not a fixed pixel rate: it targets "one
+    container-width of text scrolls by every ~26.7s" (`1280 / 48`, tuned
+    against a ~1280px desktop view feeling right), not a flat px/s - a flat
+    rate covers proportionally more of a narrow phone screen every second
+    than a wide desktop one, so it read as much faster on mobile even
+    though the CSS-pixel speed was identical. A `useLayoutEffect` measures
+    the rendered track's width and its container's width once mounted and
+    sets `--marquee-duration` (read by both the normal and reduced-motion
+    `animation` rules) to `trackWidth / (containerWidth / 26.7)`, and a
+    `ResizeObserver` on the container re-applies it on any size change
+    (window resize, phone rotation) so it doesn't go stale after mount.
+    Runs before the first paint - no flash of the wrong speed.
   - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),

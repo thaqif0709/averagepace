@@ -23,11 +23,14 @@ const MAX_REAL_MESSAGES = 8
 // monitors rather than just typical widths.
 const MIN_TRACK_CHARS = 450
 const SEPARATOR = '   •   '
-// Fixed scroll speed rather than a fixed duration - the padding above
-// means the track's actual length varies a lot (a short fallback-only
-// list vs. 8 real messages), and a fixed duration made the padded (longer)
-// version scroll noticeably faster than before.
-const PIXELS_PER_SECOND = 48
+// Speed is calibrated relative to the container's width, not a fixed
+// pixel rate - a fixed px/s reads much faster on a narrow phone screen
+// than a wide desktop one, since the same absolute speed covers a bigger
+// fraction of a small screen every second. This targets "one
+// container-width of text scrolls by every ~26.7s" (tuned against a
+// ~1280px desktop view feeling right), so the felt pace stays the same at
+// any screen size.
+const SECONDS_PER_CONTAINER_WIDTH = 1280 / 48
 
 function activityMessage(post) {
   const distance = DISTANCE_LABELS[post.distance_bucket] ?? post.distance_bucket.toUpperCase()
@@ -50,11 +53,24 @@ export default function ActivityMarquee({ posts }) {
   const track = padded.join(SEPARATOR) + SEPARATOR
 
   // Runs before paint so the correct speed applies from the first frame,
-  // not just after a visible jump once this measures.
+  // not just after a visible jump once this measures. Also watches the
+  // container for size changes (window resize, phone rotation) so the
+  // felt pace doesn't go stale after mount.
   useLayoutEffect(() => {
-    if (!trackRef.current) return
-    const oneCopyWidth = trackRef.current.scrollWidth / 2
-    trackRef.current.style.setProperty('--marquee-duration', `${oneCopyWidth / PIXELS_PER_SECOND}s`)
+    const trackEl = trackRef.current
+    if (!trackEl) return
+
+    function applySpeed() {
+      const oneCopyWidth = trackEl.scrollWidth / 2
+      const containerWidth = trackEl.parentElement.clientWidth
+      const speed = containerWidth / SECONDS_PER_CONTAINER_WIDTH
+      trackEl.style.setProperty('--marquee-duration', `${oneCopyWidth / speed}s`)
+    }
+
+    applySpeed()
+    const observer = new ResizeObserver(applySpeed)
+    observer.observe(trackEl.parentElement)
+    return () => observer.disconnect()
   }, [track])
 
   if (messages.length === 0) return null
