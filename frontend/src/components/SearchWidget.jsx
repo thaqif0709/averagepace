@@ -14,7 +14,7 @@ const TYPES = [
 function ResultRow({ type, result, onNavigate }) {
   if (type === 'people') {
     return (
-      <Link to={`/profile/${result.id}`} className="search-result-row" onClick={onNavigate}>
+      <Link to={`/profile/${result.username}`} className="search-result-row" onClick={onNavigate}>
         {result.avatar_url ? (
           <img src={result.avatar_url} alt="" />
         ) : (
@@ -29,7 +29,7 @@ function ResultRow({ type, result, onNavigate }) {
   }
   if (type === 'posts') {
     return (
-      <Link to={`/profile/${result.user_id}`} className="search-result-row" onClick={onNavigate}>
+      <Link to={`/profile/${result.user_username}`} className="search-result-row" onClick={onNavigate}>
         {result.user_avatar_url ? (
           <img src={result.user_avatar_url} alt="" />
         ) : (
@@ -43,7 +43,7 @@ function ResultRow({ type, result, onNavigate }) {
     )
   }
   return (
-    <Link to={`/profile/${result.user_id}`} className="search-result-row" onClick={onNavigate}>
+    <Link to={`/profile/${result.runner_username}`} className="search-result-row" onClick={onNavigate}>
       <span className="avatar-fallback">{result.runner_name?.[0]?.toUpperCase() ?? '?'}</span>
       <span className="search-result-text">
         <span className="search-result-title">{result.runner_name}</span>

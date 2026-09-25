@@ -26,11 +26,12 @@ export function ProfileRedirect() {
   const { user, loading } = useAuth()
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
-  return <Navigate to={`/profile/${user.id}`} replace />
+  if (!user.username) return <Navigate to="/" replace />
+  return <Navigate to={`/profile/${user.username}`} replace />
 }
 
 export default function ProfilePage() {
-  const { userId } = useParams()
+  const { username } = useParams()
   const { user: viewer, token, loading: authLoading, updateUser } = useAuth()
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
@@ -52,7 +53,7 @@ export default function ProfilePage() {
     let cancelled = false
     setLoading(true)
     setError(null)
-    Promise.all([fetchUserProfile(userId, token), fetchUserPosts(userId, token), fetchBestEfforts(userId, token)])
+    Promise.all([fetchUserProfile(username, token), fetchUserPosts(username, token), fetchBestEfforts(username, token)])
       .then(([profileData, postsData, bestEffortsData]) => {
         if (cancelled) return
         setProfile(profileData)
@@ -72,7 +73,7 @@ export default function ProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [userId, token, authLoading])
+  }, [username, token, authLoading])
 
   useEffect(() => {
     if (profile?.is_self) setUsernameValue(profile.username || '')
@@ -97,7 +98,7 @@ export default function ProfilePage() {
     setError(null)
     try {
       if (profile.follow_status === 'none') {
-        const { status } = await followUser(profile.id, token)
+        const { status } = await followUser(profile.username, token)
         setProfile({
           ...profile,
           follow_status: status,
@@ -105,7 +106,7 @@ export default function ProfilePage() {
         })
       } else {
         const wasAccepted = profile.follow_status === 'accepted'
-        await unfollowUser(profile.id, token)
+        await unfollowUser(profile.username, token)
         setProfile({
           ...profile,
           follow_status: 'none',
@@ -184,7 +185,7 @@ export default function ProfilePage() {
     setPosts((prev) => prev.filter((p) => p.id !== postId))
     // Deleting a run can change (or clear) that distance's best effort, so
     // refresh the summary too rather than leaving a stale, now-gone PR shown.
-    fetchBestEfforts(userId, token)
+    fetchBestEfforts(username, token)
       .then((data) => {
         const sorted = [...data.best_efforts].sort(
           (a, b) => DISTANCE_ORDER.indexOf(a.distance_bucket) - DISTANCE_ORDER.indexOf(b.distance_bucket)
@@ -240,9 +241,9 @@ export default function ProfilePage() {
           </h1>
           {profile.username && <p className="profile-username">@{profile.username}</p>}
           <p className="lede">
-            <Link to={`/profile/${profile.id}/followers`}>{profile.follower_count} followers</Link>
+            <Link to={`/profile/${profile.username}/followers`}>{profile.follower_count} followers</Link>
             {' · '}
-            <Link to={`/profile/${profile.id}/following`}>{profile.following_count} following</Link>
+            <Link to={`/profile/${profile.username}/following`}>{profile.following_count} following</Link>
           </p>
         </div>
         {!profile.is_self && viewer && (
@@ -299,7 +300,7 @@ export default function ProfilePage() {
           <div className="user-list">
             {requests.map((r) => (
               <div key={r.id} className="user-list-row follow-request-row">
-                <Link to={`/profile/${r.id}`} className="follow-request-user">
+                <Link to={`/profile/${r.username}`} className="follow-request-user">
                   {r.avatar_url ? (
                     <img src={r.avatar_url} alt="" />
                   ) : (
@@ -333,7 +334,7 @@ export default function ProfilePage() {
             {bestEfforts.map((be) => (
               <Link
                 key={be.distance_bucket}
-                to={`/profile/${profile.id}/best/${be.distance_bucket}`}
+                to={`/profile/${profile.username}/best/${be.distance_bucket}`}
                 className="best-effort-card"
               >
                 <div className="best-effort-label">{DISTANCE_LABELS[be.distance_bucket] ?? be.distance_bucket}</div>

@@ -5,7 +5,7 @@ import { fetchFollowers, fetchFollowing } from '../api.js'
 import RunningLoader from '../components/RunningLoader.jsx'
 
 export default function FollowListPage({ mode }) {
-  const { userId } = useParams()
+  const { username } = useParams()
   const { token, loading: authLoading } = useAuth()
   const [users, setUsers] = useState([])
   const [gated, setGated] = useState(false)
@@ -18,7 +18,7 @@ export default function FollowListPage({ mode }) {
     setLoading(true)
     setError(null)
     const fetcher = mode === 'followers' ? fetchFollowers : fetchFollowing
-    fetcher(userId, token)
+    fetcher(username, token)
       .then((data) => {
         if (!cancelled) {
           setUsers(data.users)
@@ -34,7 +34,7 @@ export default function FollowListPage({ mode }) {
     return () => {
       cancelled = true
     }
-  }, [userId, mode, token, authLoading])
+  }, [username, mode, token, authLoading])
 
   const title = mode === 'followers' ? 'Followers' : 'Following'
 
@@ -54,7 +54,7 @@ export default function FollowListPage({ mode }) {
       {!gated && users.length > 0 && (
         <div className="user-list">
           {users.map((u) => (
-            <Link key={u.id} to={`/profile/${u.id}`} className="user-list-row">
+            <Link key={u.id} to={`/profile/${u.username}`} className="user-list-row">
               {u.avatar_url ? (
                 <img src={u.avatar_url} alt="" />
               ) : (

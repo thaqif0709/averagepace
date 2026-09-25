@@ -137,27 +137,27 @@ export async function updateRunMetadata(token, runId, { eventName, timeType, res
   return res.json()
 }
 
-export async function fetchUserProfile(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}`, { headers: authHeaders(token) })
+export async function fetchUserProfile(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('User not found')
   return res.json()
 }
 
-export async function fetchUserPosts(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/posts`, { headers: authHeaders(token) })
+export async function fetchUserPosts(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/posts`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load posts')
   return res.json()
 }
 
-export async function fetchBestEfforts(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/best-efforts`, { headers: authHeaders(token) })
+export async function fetchBestEfforts(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/best-efforts`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load best efforts')
   return res.json()
 }
 
-export async function fetchUserRunsByDistance(userId, distance, token) {
+export async function fetchUserRunsByDistance(username, distance, token) {
   const params = new URLSearchParams({ distance })
-  const res = await fetch(`${API_URL}/api/users/${userId}/runs?${params}`, { headers: authHeaders(token) })
+  const res = await fetch(`${API_URL}/api/users/${username}/runs?${params}`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load runs')
   return res.json()
 }
@@ -176,14 +176,14 @@ export async function searchAll(query, type, token) {
   return res.json()
 }
 
-export async function fetchFollowers(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/followers`, { headers: authHeaders(token) })
+export async function fetchFollowers(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/followers`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load followers')
   return res.json()
 }
 
-export async function fetchFollowing(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/following`, { headers: authHeaders(token) })
+export async function fetchFollowing(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/following`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error('Failed to load following')
   return res.json()
 }
@@ -242,8 +242,8 @@ export async function declineFollowRequest(token, requesterId) {
   return res.json()
 }
 
-export async function followUser(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/follow`, {
+export async function followUser(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/follow`, {
     method: 'POST',
     headers: authHeaders(token),
   })
@@ -254,8 +254,8 @@ export async function followUser(userId, token) {
   return res.json()
 }
 
-export async function unfollowUser(userId, token) {
-  const res = await fetch(`${API_URL}/api/users/${userId}/follow`, {
+export async function unfollowUser(username, token) {
+  const res = await fetch(`${API_URL}/api/users/${username}/follow`, {
     method: 'DELETE',
     headers: authHeaders(token),
   })

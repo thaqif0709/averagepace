@@ -203,6 +203,20 @@ def get_user_public(user_id):
         conn.close()
 
 
+def get_user_by_username(username):
+    """Like get_user_public, but resolved by username (case-insensitive)."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, name, avatar_url, is_private, username FROM users WHERE LOWER(username) = LOWER(%s)",
+                (username,),
+            )
+            return cur.fetchone()
+    finally:
+        conn.close()
+
+
 def is_username_taken(username, exclude_user_id=None):
     """Case-insensitive check. exclude_user_id lets a user re-check their
     own current username (e.g. re-submitting the profile form unchanged)
@@ -366,7 +380,7 @@ def get_pending_follow_requests(user_id):
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT u.id, u.name, u.avatar_url, f.created_at
+                SELECT u.id, u.name, u.avatar_url, u.username, f.created_at
                 FROM follows f JOIN users u ON u.id = f.follower_id
                 WHERE f.followed_id = %s AND f.status = 'pending'
                 ORDER BY f.created_at DESC
@@ -411,7 +425,7 @@ def get_followers(user_id):
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT u.id, u.name, u.avatar_url
+                SELECT u.id, u.name, u.avatar_url, u.username
                 FROM follows f JOIN users u ON u.id = f.follower_id
                 WHERE f.followed_id = %s AND f.status = 'accepted'
                 ORDER BY f.created_at DESC
@@ -426,7 +440,7 @@ def get_following(user_id):
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT u.id, u.name, u.avatar_url
+                SELECT u.id, u.name, u.avatar_url, u.username
                 FROM follows f JOIN users u ON u.id = f.followed_id
                 WHERE f.follower_id = %s AND f.status = 'accepted'
                 ORDER BY f.created_at DESC
@@ -829,7 +843,7 @@ def search_runs_by_event(query, viewer_id=None, limit=20):
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             pattern = '%' + query.replace('%', r'\%').replace('_', r'\_') + '%'
             cur.execute("""
-                SELECT runs.*, COALESCE(v.vouch_count, 0) AS vouch_count
+                SELECT runs.*, users.username AS runner_username, COALESCE(v.vouch_count, 0) AS vouch_count
                 FROM runs
                 LEFT JOIN users ON users.id = runs.user_id
                 LEFT JOIN (

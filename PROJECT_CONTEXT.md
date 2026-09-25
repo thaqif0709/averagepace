@@ -51,7 +51,7 @@ SQLite storage. Restructured into a real frontend/backend split:
   public profiles) behave differently for signed-in vs. anonymous callers
   without requiring auth.
 - **`frontend/`** — React + Vite SPA, `react-router-dom` for `/` (feed),
-  `/submit`, `/leaderboard`, `/profile/:userId` (+ `/followers`,
+  `/submit`, `/leaderboard`, `/profile/:username` (+ `/followers`,
   `/following`). Calls the backend over `fetch` (`frontend/src/api.js`).
   Auth state lives in a React context (`frontend/src/auth.jsx`), session
   token in `localStorage`. No server-side rendering; the design system
@@ -72,28 +72,48 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   requires being signed in; viewing the leaderboard, the "Everyone" feed, and
   public profiles doesn't.
 - **Usernames** (`users.username`, nullable TEXT) — a stable, human-chosen
-  handle distinct from `users.id`, which stays the real internal identifier
-  (every FK - follows, posts, runs, vouches, likes - still points at that
-  numeric id; profile URLs are still `/profile/:userId`, not
-  `/profile/:username`). Uniqueness is case-insensitive, enforced by a
+  handle. `users.id` stays the real internal identifier (every FK - follows,
+  posts, runs, vouches, likes - still points at that numeric id), but
+  **profile URLs are username-based, Twitter/X style**: `/profile/:username`,
+  not `/profile/:userId`. This is a deliberate one-way switch, not a
+  redirect layer - there's no dual routing and no fallback to the old
+  numeric-id URLs, which now 404 ("User not found") exactly like any other
+  unrecognized profile. Renaming your username is not protected either: the
+  old handle stops resolving immediately and, since it becomes available
+  again, could in principle be claimed by a different account later - same
+  tradeoff Twitter/X makes, chosen explicitly over a safer
+  numeric-id-canonical-plus-redirect design. Format (3-20 chars,
+  letters/numbers/underscores, validated in `clean_username()` in `main.py`)
+  additionally *requires at least one non-digit character*
+  (`^(?=.*[A-Za-z_])[A-Za-z0-9_]{3,20}$`) so an all-digits string can never
+  be a valid username - that's what lets `/profile/:username` stay
+  unambiguous, since old numeric ids would otherwise look like plausible
+  usernames. Uniqueness is case-insensitive, enforced by a
   `UNIQUE INDEX ON (LOWER(username))` rather than a plain column constraint
   so any number of NULLs (accounts that haven't picked one yet) stay
-  allowed; format (3-20 chars, letters/numbers/underscores) is validated in
-  `clean_username()` (`main.py`), not the DB. `GET /api/username/check`
-  live-checks availability (debounced 350ms client-side,
-  `useUsernameStatus.js`), excluding the caller's own current username so
-  re-saving it unchanged doesn't read as "taken." `PATCH /api/auth/me` now
-  accepts `username` alongside the pre-existing `is_private`, returns the
-  full fresh user row either way. A brand-new or pre-existing account with
-  `username IS NULL` gets a blocking modal (`ChooseUsernameDialog.jsx`,
-  rendered at the `App.jsx` level whenever `user && !user.username`) that
-  covers the page below the topbar (lower z-index than `.topbar`, so Sign
-  out stays reachable as an escape hatch) until they pick one - no skip
-  option. Editable later from your own profile page
-  (`.username-edit-form` in `ProfilePage.jsx`, next to the privacy toggle).
-  Shown as `@username` under the display name on any profile, and next to
-  the author name on every post (`PostCard.jsx`) once `POST_SELECT` started
-  including it.
+  allowed; lookups resolve the same way (`get_user_by_username()` in
+  `database.py`, `WHERE LOWER(username) = LOWER(%s)`), so
+  `/profile/Alice_Runner` and `/profile/alice_runner` land on the same
+  profile. `GET /api/username/check` live-checks availability (debounced
+  350ms client-side, `useUsernameStatus.js`), excluding the caller's own
+  current username so re-saving it unchanged doesn't read as "taken."
+  `PATCH /api/auth/me` now accepts `username` alongside the pre-existing
+  `is_private`, returns the full fresh user row either way. A brand-new or
+  pre-existing account with `username IS NULL` gets a blocking modal
+  (`ChooseUsernameDialog.jsx`, rendered at the `App.jsx` level whenever
+  `user && !user.username`) that covers the page below the topbar (lower
+  z-index than `.topbar`, so Sign out stays reachable as an escape hatch)
+  until they pick one - no skip option; `ProfileRedirect` (bare `/profile`)
+  also guards this window, sending a still-username-less user to `/` instead
+  of a broken `/profile/undefined`. Editable later from your own profile
+  page (`.username-edit-form` in `ProfilePage.jsx`, next to the privacy
+  toggle). Shown as `@username` under the display name on any profile, and
+  next to the author name on every post (`PostCard.jsx`) once `POST_SELECT`
+  started including it. Every `/api/users/{username}/...` endpoint
+  (profile, posts, best-efforts, runs, followers, following, follow/unfollow)
+  resolves the username to a numeric id once via `get_user_by_username()`
+  and 404s upfront if it doesn't exist, then behaves exactly as it did when
+  keyed on the numeric id.
 - **Search** (`GET /api/search?q=&type=people|posts|runs` - one endpoint,
   three unrelated queries behind a `type` switch, not merged results) - a
   search icon in the topbar (`SearchWidget.jsx`, always visible, not tucked
@@ -148,12 +168,13 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
     social proof. Swapped in purely on `!loading && !user` in
     `HomePage.jsx` - logged-in users see the same feed as always, no new
     route.
-  - **Public profile** (`/profile/:userId`) — anyone's avatar, name, a
+  - **Public profile** (`/profile/:username`) — anyone's avatar, name, a
     subtle padlock next to the name when `is_private`, follower/following
     counts, follow button (hidden on your own profile or when logged out),
-    and their post history. Deliberately excludes email — `get_user_public()`
-    in `database.py` only ever selects `id, name, avatar_url, is_private`.
-  - **Follower/following lists** (`/profile/:userId/followers|following`)
+    and their post history. Deliberately excludes email — `get_user_public()`/
+    `get_user_by_username()` in `database.py` only ever select
+    `id, name, avatar_url, is_private, username`.
+  - **Follower/following lists** (`/profile/:username/followers|following`)
   - **Private accounts** — a user can flip `users.is_private` (toggle on
     their own profile page). Follow-approval model, same idea as Instagram's
     "private account"/Twitter's "protected Tweets": following a private
@@ -254,7 +275,7 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   pill (`PostCard.jsx`, own `.like-button` CSS mirroring `.vouch-button`) for
   other signed-in viewers, a plain "N like(s)" readout for the poster's own
   view and logged-out visitors.
-- **Best efforts** (`GET /api/users/{id}/best-efforts`) — each runner's
+- **Best efforts** (`GET /api/users/{username}/best-efforts`) — each runner's
   fastest submission per distance bucket, one row via
   `ROW_NUMBER() OVER (PARTITION BY distance_bucket ORDER BY duration_s ASC)`
   in `get_best_efforts()`; buckets with no submissions are simply absent, not
@@ -262,8 +283,8 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   (`ProfilePage.jsx`, ordered 5K→10K→Half→Marathon), gated by the same
   `can_view_private_content` privacy check as posts. Requested explicitly as
   a Strava feature that's normally paywalled there. Each card links to
-  `/profile/:userId/best/:distanceBucket` (`BestEffortDetailPage.jsx`,
-  backed by `GET /api/users/{id}/runs?distance=`), a drill-down listing every
+  `/profile/:username/best/:distanceBucket` (`BestEffortDetailPage.jsx`,
+  backed by `GET /api/users/{username}/runs?distance=`), a drill-down listing every
   submission at that one distance, fastest first - reuses the leaderboard's
   `<table>`/`data-label` markup so it gets the same mobile card layout for
   free.
@@ -448,11 +469,11 @@ frontend/
       UploadPage.jsx          — `/submit`, gated behind sign-in, distance/time + optional
                                  official-result link + optional caption (no GPX picker)
       LeaderboardPage.jsx      — public
-      ProfilePage.jsx          — `/profile/:userId`, any user's profile + follow button
+      ProfilePage.jsx          — `/profile/:username`, any user's profile + follow button
                                  (Follow/Requested/Following); own profile also shows a
                                  privacy toggle and follow-requests inbox
                                  (also exports ProfileRedirect for bare `/profile`)
-      FollowListPage.jsx       — `/profile/:userId/followers` and `/following`
+      FollowListPage.jsx       — `/profile/:username/followers` and `/following`
       AdminReviewPage.jsx       — `/admin`, gated on `user.is_admin` (backend still enforces
                                  it independently); review queue + a Verify button per run
   index.html             — loads the Google Identity Services script

@@ -143,7 +143,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
 
   return (
     <article className="post-card">
-      <Link to={`/profile/${post.user_id}`} className="post-avatar">
+      <Link to={`/profile/${post.user_username}`} className="post-avatar">
         {post.user_avatar_url ? (
           <img src={post.user_avatar_url} alt="" />
         ) : (
@@ -152,7 +152,7 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
       </Link>
       <div className="post-content">
         <div className="post-meta">
-          <Link to={`/profile/${post.user_id}`} className="post-author">
+          <Link to={`/profile/${post.user_username}`} className="post-author">
             {post.user_name}
           </Link>
           {post.user_username && <span className="post-username">@{post.user_username}</span>}

@@ -100,10 +100,10 @@ export default function App() {
         <Route path="/submit" element={<UploadPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/profile" element={<ProfileRedirect />} />
-        <Route path="/profile/:userId" element={<ProfilePage />} />
-        <Route path="/profile/:userId/best/:distanceBucket" element={<BestEffortDetailPage />} />
-        <Route path="/profile/:userId/followers" element={<FollowListPage mode="followers" />} />
-        <Route path="/profile/:userId/following" element={<FollowListPage mode="following" />} />
+        <Route path="/profile/:username" element={<ProfilePage />} />
+        <Route path="/profile/:username/best/:distanceBucket" element={<BestEffortDetailPage />} />
+        <Route path="/profile/:username/followers" element={<FollowListPage mode="followers" />} />
+        <Route path="/profile/:username/following" element={<FollowListPage mode="following" />} />
         <Route path="/admin" element={<AdminReviewPage />} />
       </Routes>
     </>

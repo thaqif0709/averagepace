@@ -32,7 +32,7 @@ from database import (
     get_recently_verified,
     get_review_queue,
     get_user_by_id,
-    get_user_public,
+    get_user_by_username,
     get_user_runs_by_distance,
     get_vouch_count,
     init_db,
@@ -68,7 +68,7 @@ app.add_middleware(
 )
 
 DISTANCE_LABELS = {"5k": "5K", "10k": "10K", "half": "Half Marathon", "marathon": "Marathon"}
-USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
+USERNAME_RE = re.compile(r"^(?=.*[A-Za-z_])[A-Za-z0-9_]{3,20}$")
 
 init_db()
 
@@ -265,11 +265,12 @@ def feed(scope: str = "everyone", current_user: dict = Depends(get_current_user_
     return {"posts": rows}
 
 
-@app.get("/api/users/{user_id}")
-def user_public_profile(user_id: int, current_user: dict = Depends(get_current_user_optional)):
-    user = get_user_public(user_id)
+@app.get("/api/users/{username}")
+def user_public_profile(username: str, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user_id = user["id"]
     follower_count, following_count = get_follow_counts(user_id)
     is_self = current_user is not None and current_user["id"] == user_id
     if is_self:
@@ -287,35 +288,38 @@ def user_public_profile(user_id: int, current_user: dict = Depends(get_current_u
     }
 
 
-@app.get("/api/users/{user_id}/posts")
-def user_posts(user_id: int, current_user: dict = Depends(get_current_user_optional)):
-    user = get_user_public(user_id)
+@app.get("/api/users/{username}/posts")
+def user_posts(username: str, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user_id = user["id"]
     viewer_id = current_user["id"] if current_user else None
     if not can_view_private_content(user_id, viewer_id, user["is_private"]):
         return {"posts": [], "gated": True}
     return {"posts": get_posts_for_user(user_id, viewer_id=viewer_id), "gated": False}
 
 
-@app.get("/api/users/{user_id}/best-efforts")
-def user_best_efforts(user_id: int, current_user: dict = Depends(get_current_user_optional)):
-    user = get_user_public(user_id)
+@app.get("/api/users/{username}/best-efforts")
+def user_best_efforts(username: str, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user_id = user["id"]
     viewer_id = current_user["id"] if current_user else None
     if not can_view_private_content(user_id, viewer_id, user["is_private"]):
         return {"best_efforts": [], "gated": True}
     return {"best_efforts": get_best_efforts(user_id), "gated": False}
 
 
-@app.get("/api/users/{user_id}/runs")
-def user_runs(user_id: int, distance: str, current_user: dict = Depends(get_current_user_optional)):
+@app.get("/api/users/{username}/runs")
+def user_runs(username: str, distance: str, current_user: dict = Depends(get_current_user_optional)):
     if distance not in DISTANCE_LABELS:
         raise HTTPException(status_code=400, detail="Invalid distance")
-    user = get_user_public(user_id)
+    user = get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user_id = user["id"]
     viewer_id = current_user["id"] if current_user else None
     if not can_view_private_content(user_id, viewer_id, user["is_private"]):
         return {"runs": [], "gated": True, "distance": distance}
@@ -347,41 +351,48 @@ def search(q: str = "", type: str = "people", current_user: dict = Depends(get_c
     return {"results": results, "type": type}
 
 
-@app.get("/api/users/{user_id}/followers")
-def user_followers(user_id: int, current_user: dict = Depends(get_current_user_optional)):
-    user = get_user_public(user_id)
+@app.get("/api/users/{username}/followers")
+def user_followers(username: str, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user_id = user["id"]
     viewer_id = current_user["id"] if current_user else None
     if not can_view_private_content(user_id, viewer_id, user["is_private"]):
         return {"users": [], "gated": True}
     return {"users": get_followers(user_id), "gated": False}
 
 
-@app.get("/api/users/{user_id}/following")
-def user_following(user_id: int, current_user: dict = Depends(get_current_user_optional)):
-    user = get_user_public(user_id)
+@app.get("/api/users/{username}/following")
+def user_following(username: str, current_user: dict = Depends(get_current_user_optional)):
+    user = get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user_id = user["id"]
     viewer_id = current_user["id"] if current_user else None
     if not can_view_private_content(user_id, viewer_id, user["is_private"]):
         return {"users": [], "gated": True}
     return {"users": get_following(user_id), "gated": False}
 
 
-@app.post("/api/users/{user_id}/follow")
-def follow(user_id: int, current_user: dict = Depends(get_current_user)):
+@app.post("/api/users/{username}/follow")
+def follow(username: str, current_user: dict = Depends(get_current_user)):
+    user = get_user_by_username(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user_id = user["id"]
     if user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="Can't follow yourself")
-    if not get_user_public(user_id):
-        raise HTTPException(status_code=404, detail="User not found")
     status = follow_user(current_user["id"], user_id)
     return {"status": status}
 
 
-@app.delete("/api/users/{user_id}/follow")
-def unfollow(user_id: int, current_user: dict = Depends(get_current_user)):
-    unfollow_user(current_user["id"], user_id)
+@app.delete("/api/users/{username}/follow")
+def unfollow(username: str, current_user: dict = Depends(get_current_user)):
+    user = get_user_by_username(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    unfollow_user(current_user["id"], user["id"])
     return {"status": "none"}
 
 

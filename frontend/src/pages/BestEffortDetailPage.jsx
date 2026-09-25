@@ -257,7 +257,7 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
 }
 
 export default function BestEffortDetailPage() {
-  const { userId, distanceBucket } = useParams()
+  const { username, distanceBucket } = useParams()
   const { user, token, loading: authLoading } = useAuth()
   const [runs, setRuns] = useState([])
   const [gated, setGated] = useState(false)
@@ -269,7 +269,7 @@ export default function BestEffortDetailPage() {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchUserRunsByDistance(userId, distanceBucket, token)
+    fetchUserRunsByDistance(username, distanceBucket, token)
       .then((data) => {
         if (!cancelled) {
           setRuns(data.runs)
@@ -285,7 +285,7 @@ export default function BestEffortDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [userId, distanceBucket, token, authLoading])
+  }, [username, distanceBucket, token, authLoading])
 
   function handleRunUpdated(updated) {
     setRuns((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
@@ -296,12 +296,12 @@ export default function BestEffortDetailPage() {
   }
 
   const distanceLabel = DISTANCE_LABELS[distanceBucket] ?? distanceBucket
-  const isOwn = user && String(user.id) === userId
+  const isOwn = user?.username && user.username.toLowerCase() === username.toLowerCase()
 
   return (
     <div className="wrap wide">
       <p className="eyebrow">
-        <Link to={`/profile/${userId}`}>&lt;- Back to profile</Link>
+        <Link to={`/profile/${username}`}>&lt;- Back to profile</Link>
       </p>
       <h1>{distanceLabel} history</h1>
       <p className="lede">Every {distanceLabel} you've logged, fastest first.</p>
