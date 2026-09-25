@@ -771,6 +771,22 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   post-build that all three files land in `dist/` and serve with correct
   `Content-Type` headers (`image/svg+xml`, `image/png`) via `vite preview`,
   not just that the build didn't error.
+  Real bug, caught by the user: the original SVG drew the purple as a
+  *rounded* rect (`rx="14"`) inside the full square canvas, leaving the four
+  small corner triangles outside that rounded shape transparent rather than
+  filled. iOS's tab-switcher card applies its own rounded mask/frame around
+  a site's icon, and compositing that on top of an icon whose own corners
+  are already transparent let the card's white background show through in
+  exactly those corners - visible as small white triangles on an otherwise
+  clean rounded square. Standard fix, not a one-off patch: dropped the `rx`
+  entirely so the icon is a plain full-bleed square with no rounding baked
+  in at all, the same way Apple's own HIG documents `apple-touch-icon`
+  should be built - every consuming context (a browser tab, iOS's home
+  screen, this tab-switcher card) applies its own consistent rounding on
+  top, rather than the source image guessing at a mask that only fits some
+  of them. Verified numerically, not just visually: read the regenerated
+  PNGs back and confirmed all four corner pixels are fully opaque
+  `rgba(102,2,60,255)`, not partially transparent.
 - **SEO** (`useDocumentMeta.js` hook + `index.html` baseline tags +
   `public/{robots.txt,sitemap.xml,og-image.png}`) — there was previously no
   meta description, no Open Graph/Twitter tags, no sitemap or robots.txt,
