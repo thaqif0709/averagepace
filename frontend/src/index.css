@@ -342,14 +342,23 @@ body {
 .modal-close-x:hover, .modal-close-x:focus-visible { background: var(--surface-2); color: var(--ink); filter: none; }
 .share-card-preview {
   display: flex;
-  justify-content: center;
+  /* One or more full-width "slides" (each a variant of the card) laid out
+     in a row and snap-scrolled between - native scroll-snap gives free
+     swipe physics on touch, and the dot row below covers mouse-only input
+     where there's no drag-to-scroll gesture. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   border-radius: var(--radius-lg);
-  overflow: hidden;
   margin-bottom: 16px;
   /* Checkerboard exists purely so the preview reads as "transparent" at a
-     glance - the card itself (below) fills this box edge to edge, so none
-     of this is ever actually visible behind it. It's a preview cue, not
-     part of the design. */
+     glance - each card (below) fills its slide edge to edge, so none of
+     this is ever actually visible behind it. It's a preview cue, not part
+     of the design. Tiles regardless of scroll position since it's painted
+     across this element's full (scrollable) content, not just the visible
+     window. */
   background-image:
     linear-gradient(45deg, #ccc 25%, transparent 25%),
     linear-gradient(-45deg, #ccc 25%, transparent 25%),
@@ -359,6 +368,30 @@ body {
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
   background-color: #e8e8e8;
 }
+.share-card-preview::-webkit-scrollbar { display: none; }
+.share-card-slide {
+  flex: 0 0 100%;
+  display: flex;
+  justify-content: center;
+  scroll-snap-align: center;
+}
+.share-card-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: -8px 0 16px;
+}
+.share-card-dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: rgba(42,40,35,0.2);
+  cursor: pointer;
+}
+.share-card-dot:hover { background: rgba(42,40,35,0.35); filter: none; }
+.share-card-dot.active { width: 18px; background: var(--accent); }
 /* Sized in JS to exactly the card's true (unscaled) footprint x its
    display scale, so it reserves only as much layout space as the visually
    shrunk card actually occupies - see the ResizeObserver in

@@ -591,6 +591,44 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
       and "AvgPace pulls them into a single running history" became "AvgPace
       keeps them as a single running history" - both explicit asks, no
       rationale beyond the wording itself.
+  16. A second card *variant* ("distance and pace as the main, then the
+      time"), swipeable via a carousel rather than a separate control -
+      explicitly requested as an alternative emphasis for runners who care
+      more about the pace/distance than the clock time. Implemented as a
+      remap, not a second layout: both variants render the exact same
+      panel/badge/hero/secondary structure, just with different stats in
+      each slot - "Time" (the original) is badge=distance, hero=time,
+      secondary=pace; "Distance & pace" is badge=time, hero=distance,
+      secondary=pace (pace stays secondary in both, since it was already
+      prominent and wasn't asked to move). Sharing one layout for both
+      means one panel-padding tweak or font-size change now applies to
+      both automatically, and their natural (unscaled) height is provably
+      identical - the existing single `useLayoutEffect` measurement
+      (previously reading one `cardRef`) now just reads `cardRefs.current[0]`
+      and applies that to every slide, no separate measurement pass needed
+      per variant.
+      The carousel itself is native CSS scroll-snap on `.share-card-preview`
+      (now the slide track, one `.share-card-slide` per variant at
+      `flex: 0 0 100%`) rather than a JS drag/swipe library - free momentum
+      and swipe physics on touch, no new dependency, consistent with this
+      app's general preference for CSS-native solutions over libraries
+      (see the loading spinner's `lottie-web` *light* build, or the
+      leaderboard's mobile card layout, elsewhere in this doc). A small dot
+      row below (click-to-jump via `scrollTo`, active dot driven by an
+      `onScroll` handler computing `Math.round(scrollLeft / clientWidth)`)
+      covers the one thing scroll-snap doesn't give for free: a
+      mouse-only desktop user has no drag-to-scroll gesture, so the dots
+      are the only way to switch variants there, not just a status
+      indicator for touch users.
+      `cardRef` (singular) became `cardRefs` (an array, populated via a
+      ref-callback keyed by slide index) so Download/Share can export
+      whichever slide is currently active (`cardRefs.current[variantIndex]`)
+      instead of always the first - verified by switching to the second
+      variant, downloading, and confirming the exported file still comes
+      out the correct 1440x822 (`CARD_WIDTH x PIXEL_RATIO`), genuinely
+      transparent (center alpha 0), and centered (456px/452px margins) -
+      the entire existing export pipeline (measurement, scale-stripping,
+      transparency) needed zero changes, only *which node* it's pointed at.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when
