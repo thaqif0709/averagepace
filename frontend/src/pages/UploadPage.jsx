@@ -172,13 +172,20 @@ export default function UploadPage() {
             </p>
 
             <label htmlFor="event_date">Event date (optional)</label>
-            <input
-              type="date"
-              id="event_date"
-              max={todayLocalISO()}
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-            />
+            <div className="date-field">
+              <input
+                type="date"
+                id="event_date"
+                max={todayLocalISO()}
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+              />
+              {eventDate && (
+                <button type="button" className="ghost" onClick={() => setEventDate('')}>
+                  Clear
+                </button>
+              )}
+            </div>
 
             <div className="form-row">
               <div className="form-field">

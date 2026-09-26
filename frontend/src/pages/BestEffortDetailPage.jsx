@@ -104,13 +104,20 @@ function RunRow({ run, rank, isOwn, token, onUpdated, onDeleted }) {
             />
 
             <label htmlFor={`run_date_${run.id}`}>Event date</label>
-            <input
-              type="date"
-              id={`run_date_${run.id}`}
-              max={todayLocalISO()}
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-            />
+            <div className="date-field">
+              <input
+                type="date"
+                id={`run_date_${run.id}`}
+                max={todayLocalISO()}
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+              />
+              {eventDate && (
+                <button type="button" className="ghost" onClick={() => setEventDate('')}>
+                  Clear
+                </button>
+              )}
+            </div>
 
             <label>Which time is this?</label>
             <div className="segmented">

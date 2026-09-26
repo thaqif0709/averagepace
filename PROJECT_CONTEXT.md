@@ -721,6 +721,20 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
   "YYYY-MM-DD" string's components directly rather than through `new
   Date(str)` to avoid that reading a bare date as UTC midnight and
   displaying a day early west of UTC.
+  Real bug, caught by the user on mobile: a native `<input type="date">`
+  has no way to clear itself back to empty once it has a value - desktop
+  Chrome shows a small built-in "x," but mobile Safari's date-wheel picker
+  doesn't, so an accidental tap (easy to do, since the whole field opens
+  the picker) permanently forces a date onto an "optional" field with no
+  way back out through the UI. All three date inputs share this exact
+  markup (`/submit`, the history-table edit row, and a post's inline edit),
+  so all three got the same fix: wrapped in a `.date-field` flex row with a
+  "Clear" button that only renders when the field has a value and resets
+  it to `''` on click - mirrors the existing `.ghost` secondary-button look
+  used elsewhere (e.g. `.post-edit-actions button.ghost`) rather than
+  inventing a new style. Verified the button is absent with no date set,
+  appears once one's picked, and clicking it both empties the input and
+  makes the button disappear again.
 - **Leaderboard** (`/leaderboard`) — filterable by distance bucket and by
   tier (all vs. verified-only), sorted fastest-to-slowest, filters reflected
   in the URL (shareable links); excludes runs by currently-private users.

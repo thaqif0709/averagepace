@@ -208,13 +208,20 @@ export default function PostCard({ post, onUpdated, onDeleted }) {
                 />
 
                 <label htmlFor={`event_date_${post.id}`}>Event date</label>
-                <input
-                  type="date"
-                  id={`event_date_${post.id}`}
-                  max={todayLocalISO()}
-                  value={editEventDate}
-                  onChange={(e) => setEditEventDate(e.target.value)}
-                />
+                <div className="date-field">
+                  <input
+                    type="date"
+                    id={`event_date_${post.id}`}
+                    max={todayLocalISO()}
+                    value={editEventDate}
+                    onChange={(e) => setEditEventDate(e.target.value)}
+                  />
+                  {editEventDate && (
+                    <button type="button" className="ghost" onClick={() => setEditEventDate('')}>
+                      Clear
+                    </button>
+                  )}
+                </div>
 
                 <label>Which time is this?</label>
                 <div className="segmented">
