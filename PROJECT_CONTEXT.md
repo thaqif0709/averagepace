@@ -586,6 +586,11 @@ managed Postgres, frontend as a static build on Vercel/Netlify). See
       case. Verified with three mocked auth states against the same post on
       the same profile: logged out -> 0 Share buttons rendered, logged in as
       a different user -> 0, logged in as the post's own owner -> 1.
+  15. Two more small wording tweaks to that same hero lede: "Official times
+      live scattered..." dropped "live" (just "Official times scattered..."),
+      and "AvgPace pulls them into a single running history" became "AvgPace
+      keeps them as a single running history" - both explicit asks, no
+      rationale beyond the wording itself.
   A modal preview (`.share-card-preview`, checkerboard
   background so real transparency is visibly confirmed before download, not
   just assumed) offers "Share" (Web Share API with a `File`, when

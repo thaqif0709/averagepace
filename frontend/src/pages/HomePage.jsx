@@ -98,9 +98,9 @@ export default function HomePage() {
               <h1>All your race results.<br />One place. No paywall.</h1>
               <WorldRecordTicker />
               <p className="lede">
-                Official times live scattered across a different results site
+                Official times scattered across a different results site
                 for every race — one for the marathon, another for last
-                month's local 10K. AvgPace pulls them into a single
+                month's local 10K. AvgPace keeps them as a single
                 running history: paste the link, log the time, done. The
                 "orange app" keeps your best-effort history behind a
                 subscription. We don't — your data should be free.
